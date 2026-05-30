@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -216,8 +217,39 @@ export default function AdminDashboard() {
 
   const stats = data?.stats || { totalApplications: 0, pendingPayments: 0, approvedStudents: 0, totalRevenue: 0 };
 
+  const openScreenshot = (url: string) => {
+    if (url.startsWith('data:')) {
+      setSelectedImage(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <div className="space-y-8 md:space-y-10">
+      {/* Image Preview Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 md:p-10"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-5xl w-full h-full flex items-center justify-center">
+            <button
+              className="absolute top-0 right-0 m-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+              onClick={() => setSelectedImage(null)}
+            >
+              <X size={24} />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Payment Proof"
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">System Overview</h1>
@@ -324,9 +356,13 @@ export default function AdminDashboard() {
                                 </button>
                              </div>
                           ) : null}
-                          <a href={pay.screenshot_url} target="_blank" className="p-2.5 sm:p-2 text-slate-400 hover:bg-slate-200 border border-slate-100 sm:border-transparent rounded-lg transition-colors">
+                          <button
+                            onClick={() => openScreenshot(pay.screenshot_url)}
+                            className="p-2.5 sm:p-2 text-slate-400 hover:bg-slate-200 border border-slate-100 sm:border-transparent rounded-lg transition-colors"
+                            title="Open Screenshot"
+                          >
                             <ExternalLink size={18} />
-                          </a>
+                          </button>
                         </div>
                       </td>
                     </tr>

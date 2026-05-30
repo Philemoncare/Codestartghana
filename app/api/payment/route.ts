@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 
 export async function POST(req: Request) {
   try {
@@ -30,29 +28,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid registration session. Please restart the process.' }, { status: 400 });
     }
 
-    // 3. File System Operations
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (err: any) {
-      if (err.code !== 'EEXIST') {
-        console.error('Directory Creation Error:', err);
-        return NextResponse.json({ error: 'Server could not prepare storage for screenshot.' }, { status: 500 });
-      }
-    }
-
+    // 3. Convert Image to Base64 (Serverless Compatible)
     let screenshotUrl = '';
     try {
+      // Check file size (optional but recommended for DB storage)
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        return NextResponse.json({ error: 'Screenshot is too large. Please upload a file smaller than 2MB.' }, { status: 400 });
+      }
+
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const safeFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const filePath = join(uploadDir, safeFileName);
-
-      await writeFile(filePath, buffer);
-      screenshotUrl = `/uploads/${safeFileName}`;
+      const base64Image = buffer.toString('base64');
+      screenshotUrl = `data:${file.type};base64,${base64Image}`;
     } catch (fileError) {
-      console.error('File Write Error:', fileError);
-      return NextResponse.json({ error: 'Failed to save the uploaded screenshot.' }, { status: 500 });
+      console.error('Base64 Conversion Error:', fileError);
+      return NextResponse.json({ error: 'Failed to process the uploaded screenshot.' }, { status: 500 });
     }
 
     // 4. Database Insertion
@@ -67,7 +57,7 @@ export async function POST(req: Request) {
       throw new Error('Database failed to confirm payment record creation.');
     }
 
-    // 5. Update Registration status to 'awaiting_verification' (optional but good practice)
+    // 5. Update Registration status to 'awaiting_verification'
     await query('UPDATE registrations SET status = $1 WHERE id = $2', ['awaiting_verification', regId]);
 
     // 6. Return Success JSON

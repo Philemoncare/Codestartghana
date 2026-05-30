@@ -148,14 +148,14 @@ export const EnrollmentWizard = () => {
       )}
 
       <div className={cn(
-        "bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-premium transition-all duration-500 min-h-[500px] relative overflow-hidden",
+        "bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2.5rem] p-5 md:p-12 shadow-premium transition-all duration-500 min-h-[400px] relative overflow-hidden",
         loading && "opacity-60 pointer-events-none"
       )}>
         {step === 1 && (
           <form key="step1" onSubmit={handleIdentitySubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
-            <div className="space-y-2">
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Personal Details</h2>
-              <p className="text-sm md:text-base text-slate-500 font-medium">Let&apos;s start with your basic information.</p>
+            <div className="space-y-1.5 sm:space-y-2">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Personal Details</h2>
+              <p className="text-xs sm:text-sm md:text-base text-slate-500 font-medium">Let&apos;s start with your basic information.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -178,9 +178,9 @@ export const EnrollmentWizard = () => {
         {step === 2 && (
           <form key="step2" onSubmit={handleLearningSubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
             <div className="flex justify-between items-start">
-               <div className="space-y-2">
-                <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Learning Profile</h2>
-                <p className="text-sm md:text-base text-slate-500 font-medium">Your technical background and motivation.</p>
+               <div className="space-y-1.5 sm:space-y-2">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Learning Profile</h2>
+                <p className="text-xs sm:text-sm md:text-base text-slate-500 font-medium">Your technical background and motivation.</p>
               </div>
               <button onClick={prevStep} type="button" className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
                 <ChevronLeft size={24} />
@@ -227,9 +227,9 @@ export const EnrollmentWizard = () => {
         {step === 3 && (
           <form key="step3" onSubmit={handlePaymentSubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
             <div className="flex justify-between items-start">
-               <div className="space-y-2">
-                <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Tuition Payment</h2>
-                <p className="text-sm md:text-base text-slate-500 font-medium">Finalize your enrollment via Mobile Money.</p>
+               <div className="space-y-1.5 sm:space-y-2">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Tuition Payment</h2>
+                <p className="text-xs sm:text-sm md:text-base text-slate-500 font-medium">Finalize your enrollment via Mobile Money.</p>
               </div>
               <button onClick={prevStep} type="button" className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
                 <ChevronLeft size={24} />

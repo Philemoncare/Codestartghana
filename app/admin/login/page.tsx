@@ -52,23 +52,20 @@ export default function AdminLoginPage() {
 
       <div className="w-full max-w-[460px] relative z-10">
         <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-           {/* Primary Brand Identity */}
-           <div className="flex items-center gap-0 mb-4 transition-all duration-500">
-              <div className="relative w-20 h-20 md:w-24 md:h-24">
-                <Image
-                  src="/images/faicom.png"
-                  alt="CodeStart Logo"
-                  fill
-                  className="object-contain object-left"
-                  priority
-                />
-              </div>
-              <span className="font-black text-4xl md:text-5xl tracking-tighter text-white uppercase -ml-5 md:-ml-6">CodeStart</span>
+           {/* Primary Brand Identity - Logo Only */}
+           <div className="relative w-24 h-24 md:w-32 md:h-32 mb-6">
+              <Image
+                src="/images/faicom.png"
+                alt="CodeStart Logo"
+                fill
+                className="object-contain"
+                priority
+              />
            </div>
 
            <div className="text-center space-y-3">
               <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight uppercase leading-none">Administrative Login</h1>
-              <p className="text-slate-500 font-bold text-[13px] leading-relaxed">
+              <p className="text-slate-500 font-bold text-[13px] leading-relaxed max-w-[280px] mx-auto">
                 Authorized access only. Verify credentials to manage the platform.
               </p>
            </div>

@@ -10,11 +10,10 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
           {/* Brand Column */}
           <div className="space-y-8">
-            <Link href="/" className="flex items-center gap-0 group">
-              <div className="relative w-32 h-32 transition-transform group-hover:scale-105">
-                <Image src="/images/faicom.png" alt="CodeStart" fill className="object-contain object-left scale-125" />
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="relative w-16 h-16 transition-transform group-hover:scale-105">
+                <Image src="/images/faicom.png" alt="CodeStart Logo" fill className="object-contain" />
               </div>
-              <span className="font-black text-6xl tracking-tighter text-slate-900 uppercase -ml-20">CodeStart</span>
             </Link>
             <p className="text-slate-500 font-medium leading-relaxed max-w-xs text-sm">
               Premium software engineering training. We bridge the gap between academic theory and industry practice through hands-on project building.

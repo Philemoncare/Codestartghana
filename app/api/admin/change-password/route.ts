@@ -1,29 +1,15 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { cookies } from 'next/headers';
+import { verifyAdmin } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
     const { currentPassword, newPassword } = await req.json();
-    const sessionToken = cookies().get('admin_session_token')?.value;
+    const adminSession = await verifyAdmin();
 
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 1. Get current admin from session
-    const adminRes = await query(
-      `SELECT a.* FROM admins a
-       JOIN admin_sessions s ON a.id = s.admin_id
-       WHERE s.session_token = $1 AND s.expires_at > CURRENT_TIMESTAMP`,
-      [sessionToken]
-    );
-
-    if (!adminRes || (adminRes.rowCount ?? 0) === 0) {
-      return NextResponse.json({ error: 'Session expired. Please login again.' }, { status: 401 });
-    }
-
+    // 1. Get full admin record
+    const adminRes = await query('SELECT * FROM admins WHERE id = $1', [adminSession.id]);
     const admin = adminRes.rows[0];
 
     // 2. Verify current password

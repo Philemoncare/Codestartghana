@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendApprovalEmail } from '@/lib/mail';
-import { cookies } from 'next/headers';
+import { verifyAdmin } from '@/lib/auth';
 
 export async function PATCH(req: Request) {
   try {
-    // 0. Auth check
-    const sessionToken = cookies().get('admin_session_token')?.value;
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    await verifyAdmin();
     const { id, status } = await req.json();
 
     if (!id || !status) {

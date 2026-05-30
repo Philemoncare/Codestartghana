@@ -6,8 +6,9 @@ import nodemailer from 'nodemailer';
  */
 async function sendMail({ to, subject, html }: { to: string, subject: string, html: string }) {
   const fromName = "CodeStart Ghana";
-  const fromEmail = process.env.SMTP_USER || "codestartghana@gmail.com";
-  const fromFull = `${fromName} <${fromEmail}>`;
+  const fromEmail = "codestartghana@gmail.com";
+  // Use MAIL_FROM from env if available, else default
+  const fromFull = process.env.MAIL_FROM || `${fromName} <${fromEmail}>`;
 
   // 1. Try Resend
   if (process.env.RESEND_API_KEY) {
@@ -32,7 +33,7 @@ async function sendMail({ to, subject, html }: { to: string, subject: string, ht
         return { success: true, provider: 'resend' };
       } else {
         const err = await res.json().catch(() => ({ message: 'Failed to parse error response' }));
-        console.warn(`[MAIL] Resend failed: ${err.message || 'Unknown error'}. Falling back...`);
+        console.warn(`[MAIL] Resend failed: ${JSON.stringify(err)}. Falling back...`);
       }
     } catch (err: any) {
       console.warn(`[MAIL] Resend network error: ${err.message}. Falling back...`);
@@ -43,7 +44,6 @@ async function sendMail({ to, subject, html }: { to: string, subject: string, ht
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     console.log(`[MAIL] Falling back to SMTP for ${to}...`);
 
-    // Improved Transporter Configuration
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
@@ -56,15 +56,12 @@ async function sendMail({ to, subject, html }: { to: string, subject: string, ht
         rejectUnauthorized: false,
         minVersion: 'TLSv1.2'
       },
-      connectionTimeout: 15000, // 15 seconds
-      greetingTimeout: 15000,
-      socketTimeout: 30000,
-      debug: true, // Enable debug logs in console
-      logger: true
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
     });
 
     try {
-      console.log(`[MAIL] Initiating SMTP send...`);
       const info = await transporter.sendMail({
         from: fromFull,
         to,
@@ -74,12 +71,7 @@ async function sendMail({ to, subject, html }: { to: string, subject: string, ht
       console.log(`[MAIL] SMTP email sent successfully to ${to}. MessageId: ${info.messageId}`);
       return { success: true, provider: 'smtp' };
     } catch (error: any) {
-      console.error(`[MAIL] SMTP ERROR for ${to}:`, {
-        message: error.message,
-        code: error.code,
-        command: error.command,
-        response: error.response
-      });
+      console.error(`[MAIL] SMTP ERROR for ${to}:`, error.message);
       return { success: false, error: error.message || 'SMTP delivery failed' };
     }
   }
@@ -135,7 +127,6 @@ export async function sendApprovalEmail(to: string, name: string) {
   return await sendMail({ to, subject, html });
 }
 
-// Legacy support for sendWelcomeEmail
 export const sendWelcomeEmail = sendApprovalEmail;
 
 export async function sendRegistrationReceivedEmail(to: string, name: string) {

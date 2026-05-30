@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { verifyAdmin } from '@/lib/auth';
 
 export async function GET() {
   try {
-    // 1. Get total registrations
+    await verifyAdmin();
     const regRes = await query('SELECT COUNT(*) FROM registrations');
     const totalApps = parseInt(regRes.rows?.[0]?.count || '0');
 
@@ -55,6 +56,7 @@ export async function GET() {
 // SECURE ONE-TIME CLEANUP HANDLER
 export async function POST() {
   try {
+    await verifyAdmin();
     console.log('[SYSTEM] Initiating full data purge...');
 
     // Ordered to respect foreign key constraints

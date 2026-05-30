@@ -1,21 +1,46 @@
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  host: process.env.PGHOST,
-  user: process.env.PGUSER,
-  password: process.env.PGPASSWORD,
-  database: process.env.PGDATABASE || 'codestart',
-  port: parseInt(process.env.PGPORT || '5432'),
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+const poolConfig: PoolConfig = {
+  connectionString,
+  // Neon requires SSL. For serverless, we usually use rejectUnauthorized: false
+  // or a specific CA cert, but Neon's default works with rejectUnauthorized: false.
+  ssl: {
+    rejectUnauthorized: false
+  },
+  // Optimize for serverless cold starts and connection limits
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+};
+
+// Global pool instance to prevent multiple pools in development/serverless
+let pool: Pool;
+
+if (process.env.NODE_ENV === 'production') {
+  pool = new Pool(poolConfig);
+} else {
+  // In development mode, use a global variable so that the value
+  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+  if (!(global as any).pgPool) {
+    (global as any).pgPool = new Pool(poolConfig);
+  }
+  pool = (global as any).pgPool;
+}
 
 export const query = async (text: string, params?: any[]) => {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    // Optional: console.log('executed query', { text, duration, rows: res.rowCount });
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Executed query', { text, duration, rows: res.rowCount });
+    }
     return res;
   } catch (error) {
     console.error('Database Query Error:', { text, error });

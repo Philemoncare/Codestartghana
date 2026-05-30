@@ -1,31 +1,14 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { cookies } from 'next/headers';
+import { verifyAdmin } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
-    const { fullName, email, phone } = await req.json();
-    const sessionToken = cookies().get('admin_session_token')?.value;
+    const { email } = await req.json();
+    const admin = await verifyAdmin();
+    const adminId = admin.id;
 
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 1. Get current admin
-    const adminRes = await query(
-      `SELECT admin_id FROM admin_sessions WHERE session_token = $1 AND expires_at > CURRENT_TIMESTAMP`,
-      [sessionToken]
-    );
-
-    if (!adminRes || (adminRes.rowCount ?? 0) === 0) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const adminId = adminRes.rows[0].admin_id;
-
-    // 2. Update profile (assuming columns exist or using placeholders)
-    // Note: If you don't have fullName/phone columns in admins table yet, we should add them.
-    // Let's check schema.sql again.
+    // 2. Update profile
     await query(
       'UPDATE admins SET username = $1 WHERE id = $2',
       [email.toLowerCase().trim(), adminId]

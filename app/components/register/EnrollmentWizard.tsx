@@ -1,0 +1,362 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { registerService } from "@/services/registerService";
+import { paymentService } from "@/services/paymentService";
+import { toast } from "sonner";
+import {
+  Loader2,
+  CheckCircle,
+  Smartphone,
+  Upload,
+  ArrowRight,
+  ChevronLeft,
+  User,
+  BookOpen,
+  CreditCard,
+  ShieldCheck
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type Step = 1 | 2 | 3 | 4;
+
+export const EnrollmentWizard = () => {
+  const router = useRouter();
+  const [step, setStep] = useState<Step>(1);
+  const [loading, setLoading] = useState(false);
+  const [registrationId, setRegistrationId] = useState<number | null>(null);
+
+  // Master Form State
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    whatsapp: "",
+    age: "",
+    school: "",
+    experience: "beginner",
+    motivation: ""
+  });
+
+  const [paymentData, setPaymentData] = useState({
+    senderNumber: "",
+    transactionId: ""
+  });
+
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  // Handle Input Changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPaymentData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    if (selected) {
+      if (!selected.type.startsWith('image/')) {
+        toast.error("Please upload an image file.");
+        return;
+      }
+      if (selected.size > 5 * 1024 * 1024) {
+        toast.error("File size limit is 5MB.");
+        return;
+      }
+      setFile(selected);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreview(reader.result as string);
+      reader.readAsDataURL(selected);
+    }
+  };
+
+  // Step Transitions
+  const nextStep = () => setStep(prev => (prev < 4 ? (prev + 1) as Step : prev));
+  const prevStep = () => setStep(prev => (prev > 1 ? (prev - 1) as Step : prev));
+
+  const handleIdentitySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.fullName || !formData.email || !formData.whatsapp || !formData.age || !formData.school) {
+      toast.error("Please complete all fields.");
+      return;
+    }
+    nextStep();
+  };
+
+  const handleLearningSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.motivation) {
+      toast.error("Please share your motivation.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await registerService.register(formData);
+      setRegistrationId(result.id);
+      nextStep();
+      toast.success("Registration info saved.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save registration.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registrationId) return toast.error("Session expired. Please restart.");
+    if (!paymentData.senderNumber || !paymentData.transactionId || !file) {
+      toast.error("Please provide all payment details and screenshot.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await paymentService.submitPayment({
+        registrationId: registrationId.toString(),
+        studentName: formData.fullName,
+        transactionId: paymentData.transactionId,
+        senderNumber: paymentData.senderNumber,
+        file
+      });
+      nextStep();
+      toast.success("Application submitted successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Payment submission failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Progress Stepper */}
+      {step < 4 && (
+        <div className="flex items-center justify-between max-w-sm sm:max-w-md mx-auto mb-8 sm:mb-12 px-2">
+          <StepIcon active={step === 1} completed={step > 1} icon={<User size={16} />} label="Identity" />
+          <div className={cn("h-px flex-1 mx-2 sm:mx-4 transition-colors duration-500", step > 1 ? "bg-blue-600" : "bg-slate-200")} />
+          <StepIcon active={step === 2} completed={step > 2} icon={<BookOpen size={16} />} label="Learning" />
+          <div className={cn("h-px flex-1 mx-2 sm:mx-4 transition-colors duration-500", step > 2 ? "bg-blue-600" : "bg-slate-200")} />
+          <StepIcon active={step === 3} completed={step > 3} icon={<CreditCard size={16} />} label="Payment" />
+        </div>
+      )}
+
+      <div className={cn(
+        "bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-premium transition-all duration-500 min-h-[500px] relative overflow-hidden",
+        loading && "opacity-60 pointer-events-none"
+      )}>
+        {step === 1 && (
+          <form key="step1" onSubmit={handleIdentitySubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+            <div className="space-y-2">
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Personal Details</h2>
+              <p className="text-sm md:text-base text-slate-500 font-medium">Let&apos;s start with your basic information.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormInput label="Full Name" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="John Doe" required />
+              <FormInput label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="john@example.com" required />
+              <FormInput label="WhatsApp Number" name="whatsapp" value={formData.whatsapp} onChange={handleInputChange} placeholder="050 000 0000" required />
+              <FormInput label="Age" name="age" type="number" value={formData.age} onChange={handleInputChange} placeholder="22" required />
+            </div>
+
+            <FormInput label="Current Institution / Occupation" name="school" value={formData.school} onChange={handleInputChange} placeholder="e.g. University of Ghana" required />
+
+            <div className="pt-4">
+              <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all hover:bg-blue-700 shadow-xl shadow-blue-100">
+                Next Step <ArrowRight size={20} />
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 2 && (
+          <form key="step2" onSubmit={handleLearningSubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+            <div className="flex justify-between items-start">
+               <div className="space-y-2">
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Learning Profile</h2>
+                <p className="text-sm md:text-base text-slate-500 font-medium">Your technical background and motivation.</p>
+              </div>
+              <button onClick={prevStep} type="button" className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                <ChevronLeft size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Current Experience</label>
+                <select
+                  name="experience"
+                  value={formData.experience}
+                  onChange={handleInputChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all appearance-none font-bold text-slate-900 cursor-pointer"
+                >
+                  <option value="beginner">Absolute Beginner</option>
+                  <option value="some-knowledge">Intermediate (Knows HTML/CSS)</option>
+                  <option value="advanced">Advanced (Built web apps)</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Why CodeStart?</label>
+                <textarea
+                  required
+                  name="motivation"
+                  rows={4}
+                  value={formData.motivation}
+                  onChange={handleInputChange}
+                  placeholder="Tell us about your technical goals..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all resize-none font-bold text-slate-900 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button disabled={loading} type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all hover:bg-blue-700 shadow-xl shadow-blue-100">
+                {loading ? <Loader2 className="animate-spin" /> : <>Save & Continue <ArrowRight size={20} /></>}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 3 && (
+          <form key="step3" onSubmit={handlePaymentSubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+            <div className="flex justify-between items-start">
+               <div className="space-y-2">
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Tuition Payment</h2>
+                <p className="text-sm md:text-base text-slate-500 font-medium">Finalize your enrollment via Mobile Money.</p>
+              </div>
+              <button onClick={prevStep} type="button" className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                <ChevronLeft size={24} />
+              </button>
+            </div>
+
+            <div className="bg-slate-900 p-6 sm:p-8 rounded-2xl sm:rounded-3xl text-white space-y-6 shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-8 opacity-5">
+                  <CreditCard size={120} />
+               </div>
+               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                  <div>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">MTN Mobile Money</p>
+                     <p className="text-2xl sm:text-3xl font-black tracking-tighter">0533680823</p>
+                     <p className="text-[10px] font-bold text-blue-400 mt-1 uppercase tracking-widest">Name: Philemon Melabah</p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                     <p className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] mb-1">Tuition Fee</p>
+                     <p className="text-3xl sm:text-4xl font-black italic tracking-tighter">GHS 450</p>
+                  </div>
+               </div>
+               <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-[11px] font-medium leading-relaxed text-slate-300">
+                 Step 1: Send GHS 450 to the number above.<br/>
+                 Step 2: Enter your transaction details below for verification.
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormInput label="Your MoMo Number" name="senderNumber" value={paymentData.senderNumber} onChange={handlePaymentChange} placeholder="Number paid from" required />
+              <FormInput label="Transaction ID" name="transactionId" value={paymentData.transactionId} onChange={handlePaymentChange} placeholder="MoMo Reference" required />
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Transfer Screenshot</label>
+              <div className="relative border-2 border-dashed border-slate-200 hover:border-blue-600 rounded-[2rem] p-4 transition-all group bg-slate-50/50">
+                <input type="file" required accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />
+                {preview ? (
+                  <div className="relative h-56 rounded-2xl overflow-hidden border border-slate-200">
+                    <img src={preview} alt="Receipt preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="bg-white text-slate-900 font-bold text-[10px] uppercase tracking-widest px-4 py-2 rounded-full">Change Photo</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-colors">
+                       <Upload size={24} />
+                    </div>
+                    <p className="text-xs text-slate-500 font-black uppercase tracking-widest">Upload transaction screenshot</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button disabled={loading} type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all hover:bg-blue-700 shadow-xl shadow-blue-100">
+              {loading ? <Loader2 className="animate-spin" /> : "Complete Enrollment"}
+            </button>
+          </form>
+        )}
+
+        {step === 4 && (
+          <div className="text-center py-8 space-y-8 animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto border border-emerald-100 shadow-inner">
+              <CheckCircle size={48} />
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-4xl font-black text-slate-900 tracking-tight">Application Pending</h2>
+              <div className="max-w-md mx-auto space-y-4 text-slate-600 font-medium leading-relaxed">
+                <p>Excellent work, <span className="text-slate-900 font-bold">{formData.fullName.split(' ')[0]}</span>. Your application has been successfully submitted for review.</p>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-left space-y-2">
+                   <div className="flex justify-between"><span>Email</span><span className="font-bold text-slate-900">{formData.email}</span></div>
+                   <div className="flex justify-between"><span>MoMo Ref</span><span className="font-bold text-slate-900">{paymentData.transactionId}</span></div>
+                   <div className="flex justify-between"><span>Status</span><span className="text-blue-600 font-bold uppercase tracking-widest">Verification In Progress</span></div>
+                </div>
+                <p className="text-sm">We will verify your transaction and establish contact via WhatsApp within 24 hours.</p>
+              </div>
+            </div>
+
+            <div className="pt-6">
+               <button
+                onClick={() => router.push("/")}
+                className="px-10 py-4 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl"
+              >
+                Return to Homepage
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Security Badge */}
+      <div className="flex items-center justify-center gap-2 text-slate-400">
+         <ShieldCheck size={16} />
+         <span className="text-[10px] font-bold uppercase tracking-widest">End-to-End Encrypted Enrollment</span>
+      </div>
+    </div>
+  );
+};
+
+const StepIcon = ({ active, completed, icon, label }: { active: boolean; completed: boolean; icon: any; label: string }) => (
+  <div className="flex flex-col items-center gap-2 sm:gap-3">
+    <div className={cn(
+      "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500",
+      active ? "bg-blue-600 text-white shadow-xl shadow-blue-100 scale-110" :
+      completed ? "bg-emerald-500 text-white" : "bg-white border border-slate-200 text-slate-400"
+    )}>
+      {completed ? <CheckCircle size={18} /> : icon}
+    </div>
+    <span className={cn(
+      "text-[8px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em]",
+      active ? "text-slate-900" : "text-slate-400"
+    )}>{label}</span>
+  </div>
+);
+
+const FormInput = ({ label, name, type = "text", value, onChange, placeholder, required = false }: any) => (
+  <div className="space-y-1.5 sm:space-y-2">
+    <label className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">{label}</label>
+    <input
+      required={required}
+      name={name}
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 placeholder:text-slate-300 text-sm sm:text-base"
+    />
+  </div>
+);

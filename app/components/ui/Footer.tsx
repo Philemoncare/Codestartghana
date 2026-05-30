@@ -11,9 +11,10 @@ export const Footer = () => {
           {/* Brand Column */}
           <div className="space-y-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="relative w-16 h-16 transition-transform group-hover:scale-105">
+              <div className="relative w-12 h-12 transition-transform group-hover:scale-105">
                 <Image src="/images/faicom.png" alt="CodeStart Logo" fill className="object-contain" />
               </div>
+              <span className="font-black text-2xl tracking-tighter text-slate-900 uppercase">CodeStart</span>
             </Link>
             <p className="text-slate-500 font-medium leading-relaxed max-w-xs text-sm">
               Premium software engineering training. We bridge the gap between academic theory and industry practice through hands-on project building.

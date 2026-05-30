@@ -52,7 +52,7 @@ export const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 group relative z-[110] min-w-0 shrink-0">
-            <div className="relative w-12 h-12 md:w-16 md:h-16 transition-transform group-hover:scale-110 active:scale-95 shrink-0">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 transition-transform group-hover:scale-110 active:scale-95 shrink-0">
               <Image
                 src="/images/faicom.png"
                 alt="CodeStart Logo"
@@ -61,6 +61,7 @@ export const Navbar = () => {
                 priority
               />
             </div>
+            <span className="font-black text-xl md:text-2xl tracking-tighter text-slate-900 uppercase">CodeStart</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -131,9 +132,10 @@ export const Navbar = () => {
         >
           <div className="p-8 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-              <div className="relative w-16 h-16">
+              <div className="relative w-12 h-12">
                 <Image src="/images/faicom.png" alt="CodeStart" fill className="object-contain" />
               </div>
+              <span className="font-black text-2xl tracking-tighter text-slate-900 uppercase">CodeStart</span>
             </Link>
             <button
               onClick={() => setMobileMenuOpen(false)}

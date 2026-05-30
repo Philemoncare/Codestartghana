@@ -113,16 +113,17 @@ export default function AdminLayout({
           "h-20 flex items-center px-6 border-b border-slate-100 shrink-0",
           isCollapsed ? "justify-center" : "justify-start"
         )}>
-          <Link href="/admin/dashboard" className="flex items-center gap-2 overflow-hidden group">
+          <Link href="/admin/dashboard" className="flex items-center gap-0 overflow-hidden group">
             <div className={cn(
                "relative transition-all duration-500",
-               isCollapsed ? "w-12 h-12" : "w-14 h-14"
+               isCollapsed ? "w-12 h-12" : "w-16 h-16"
             )}>
                <Image src="/images/faicom.png" alt="Logo" fill className="object-contain transition-transform group-hover:scale-110" />
             </div>
             {!isCollapsed && (
               <div className="leading-none whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-500">
-                 <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Admin Control</span>
+                 <span className="font-bold text-2xl block tracking-tighter text-slate-900 uppercase">CodeStart</span>
+                 <span className="text-[9px] uppercase font-black text-slate-400 tracking-widest">Admin Control</span>
               </div>
             )}
           </Link>

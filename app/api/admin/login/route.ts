@@ -20,12 +20,6 @@ export async function POST(req: Request) {
 
     const admin = res.rows[0];
 
-    // Check if this specific email is authorized
-    const authorizedEmails = ['favmoms440@gmail.com', 'philemonmelabah0@gmail.com'];
-    if (!authorizedEmails.includes(admin.username.toLowerCase())) {
-       return NextResponse.json({ error: 'Access Denied: Unauthorized administrative account' }, { status: 403 });
-    }
-
     const isMatch = await bcrypt.compare(password, admin.password_hash);
 
     if (!isMatch) {

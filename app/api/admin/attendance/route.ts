@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       [registrationId, timetableId]
     );
 
-    if (check.rowCount > 0) {
+    if ((check.rowCount ?? 0) > 0) {
       return NextResponse.json({ error: 'Attendance already marked' }, { status: 400 });
     }
 

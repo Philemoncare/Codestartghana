@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { studentService } from "@/services/studentService";
 import {
   User, Mail, Phone, School, ShieldCheck,
-  Save, Loader2, Camera, Lock, Eye, EyeOff
+  Save, Loader2, Camera, Lock, Eye, EyeOff, Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/Skeleton";

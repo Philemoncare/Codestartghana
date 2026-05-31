@@ -27,5 +27,50 @@ export const adminService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ registrationId }),
     });
+  },
+
+  async getTimetable() {
+    return apiFetch('/api/admin/timetable');
+  },
+
+  async addTimetableEntry(data: any) {
+    return apiFetch('/api/admin/timetable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateTimetableEntry(data: any) {
+    return apiFetch('/api/admin/timetable', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteTimetableEntry(id: number) {
+    return apiFetch(`/api/admin/timetable?id=${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async markAttendance(data: { registrationId: number, timetableId: number }) {
+    return apiFetch('/api/admin/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getAttendance(registrationId?: number) {
+    const url = registrationId ? `/api/admin/attendance?registrationId=${registrationId}` : '/api/admin/attendance';
+    return apiFetch(url);
+  },
+
+  async removeAttendance(id: number) {
+    return apiFetch(`/api/admin/attendance?id=${id}`, {
+      method: 'DELETE',
+    });
   }
 };

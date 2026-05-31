@@ -44,7 +44,7 @@ async function sendMail({ to, subject, html }: { to: string, subject: string, ht
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     console.log(`[MAIL] Falling back to SMTP for ${to}...`);
 
-    const transporter = nodemailer.createTransport({
+    const smtpConfig: any = {
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
@@ -55,13 +55,23 @@ async function sendMail({ to, subject, html }: { to: string, subject: string, ht
       tls: {
         rejectUnauthorized: false,
         minVersion: 'TLSv1.2'
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000,
-    });
+      }
+    };
+
+    // Special handling for Gmail
+    if (process.env.SMTP_HOST.includes('gmail.com')) {
+      delete smtpConfig.host;
+      delete smtpConfig.port;
+      delete smtpConfig.secure;
+      smtpConfig.service = 'gmail';
+    }
+
+    const transporter = nodemailer.createTransport(smtpConfig);
 
     try {
+      // Verify connection before sending
+      await transporter.verify();
+
       const info = await transporter.sendMail({
         from: fromFull,
         to,

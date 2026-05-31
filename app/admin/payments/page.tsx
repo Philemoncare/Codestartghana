@@ -32,23 +32,57 @@ export default function PaymentsPage() {
   }, []);
 
   const handleStatusUpdate = async (id: string, status: string) => {
-    const tid = toast.loading(`${status === 'approved' ? 'Approving' : 'Rejecting'}...`);
+    const tid = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">{status === 'approved' ? 'Verifying Ledger' : 'Rejecting Payment'}</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">{status === 'approved' ? 'Finalizing transaction records...' : 'Updating student profile...'}</span>
+      </div>
+    );
     try {
       await adminService.updatePaymentStatus(id, status);
-      toast.success(`Student ${status} successfully.`, { id: tid });
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Record Synchronized</span>
+          <span className="text-slate-400 text-xs font-medium">{status === 'approved' ? 'Student has been officially enrolled.' : 'The application has been declined.'}</span>
+        </div>,
+        { id: tid }
+      );
       fetchData();
     } catch (error: any) {
-      toast.error(error.message || "Update failed", { id: tid });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Update Failed</span>
+          <span className="text-slate-400 text-xs font-medium">{error.message || "Unable to update payment status."}</span>
+        </div>,
+        { id: tid }
+      );
     }
   };
 
   const handleResendWelcome = async (regId: number) => {
-    const toastId = toast.loading("Sending welcome email...");
+    const toastId = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Dispatching Credentials</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Generating and sending welcome package...</span>
+      </div>
+    );
     try {
       await adminService.resendWelcomeEmail(regId);
-      toast.success("Welcome email sent successfully.", { id: toastId });
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Email Transmitted</span>
+          <span className="text-slate-400 text-xs font-medium">Onboarding instructions have been delivered.</span>
+        </div>,
+        { id: toastId }
+      );
     } catch (error: any) {
-      toast.error(error.message || "Failed to send email.", { id: toastId });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Transmission Failed</span>
+          <span className="text-slate-400 text-xs font-medium">Unable to resend the welcome email.</span>
+        </div>,
+        { id: toastId }
+      );
     }
   };
 

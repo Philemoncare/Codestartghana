@@ -28,14 +28,29 @@ export default function AdminLoginPage() {
       });
 
       if (res.requiresVerification) {
-        toast.success("Verification code sent to your email.");
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span className="font-black text-white text-sm tracking-tight">Security Code Sent</span>
+            <span className="text-slate-400 text-xs font-medium">Please verify your identity with the key sent to your email.</span>
+          </div>
+        );
         router.push(`/admin/verify?email=${encodeURIComponent(email)}`);
       } else {
-        toast.success("Authentication successful. Welcome back.");
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span className="font-black text-white text-sm tracking-tight">Access Granted</span>
+            <span className="text-slate-400 text-xs font-medium">Welcome back to the CodeStart Command Center.</span>
+          </div>
+        );
         router.push("/admin/dashboard");
       }
     } catch (error: any) {
-      toast.error(error.message || "Invalid administrative credentials");
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Authentication Denied</span>
+          <span className="text-slate-400 text-xs font-medium">{error.message || "Invalid administrative credentials provided."}</span>
+        </div>
+      );
     } finally {
       setLoading(false);
     }

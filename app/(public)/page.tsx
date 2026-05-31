@@ -1,14 +1,31 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Hero } from "@/components/landing/Hero";
+import { TechStack } from "@/components/landing/TechStack";
+import { Countdown } from "@/components/landing/Countdown";
 import { Curriculum } from "@/components/landing/Curriculum";
 import { AboutFounder } from "@/components/landing/AboutFounder";
 import { FAQ } from "@/components/landing/FAQ";
-import { Globe, Laptop, Zap, ArrowUpRight } from "lucide-react";
+import { Globe, Laptop, Zap, ArrowUpRight, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPage() {
+  const [isStudent, setIsStudent] = useState(false);
+
+  useEffect(() => {
+    const hasStudentSession = document.cookie.split('; ').some(c => c.startsWith('student_email='));
+    setIsStudent(hasStudentSession);
+  }, []);
+
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <Hero />
+      {/* ... rest of components ... */}
+
+      <TechStack />
+
+      <Countdown />
 
       <AboutFounder />
 
@@ -46,7 +63,7 @@ export default function LandingPage() {
       <FAQ />
 
       {/* CTA Section - Mobile Optimized Padding & Typography */}
-      <section className="py-24 md:py-32 bg-blue-600 relative overflow-hidden">
+      <section id="registration" className="py-24 md:py-32 bg-blue-600 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl" />
         <div className="max-w-4xl mx-auto px-5 sm:px-8 text-center space-y-8 relative z-10">
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1]">
@@ -56,13 +73,23 @@ export default function LandingPage() {
             Join a practical engineering-focused learning environment designed to help developers grow through projects, mentorship, and consistent technical practice.
           </p>
           <div className="pt-6">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center w-full sm:w-auto gap-2 px-10 py-5 bg-white text-blue-600 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all shadow-2xl active:scale-95"
-            >
-              Enroll for 2026 Cohort
-              <ArrowUpRight size={20} />
-            </Link>
+            {isStudent ? (
+              <Link
+                href="/student/dashboard"
+                className="inline-flex items-center justify-center w-full sm:w-auto gap-3 px-10 py-5 bg-white text-blue-600 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all shadow-2xl active:scale-95"
+              >
+                Go to Portal Dashboard
+                <LayoutDashboard size={20} />
+              </Link>
+            ) : (
+              <Link
+                href="/register"
+                className="inline-flex items-center justify-center w-full sm:w-auto gap-2 px-10 py-5 bg-white text-blue-600 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all shadow-2xl active:scale-95"
+              >
+                Enroll for 2026 Cohort
+                <ArrowUpRight size={20} />
+              </Link>
+            )}
           </div>
         </div>
       </section>

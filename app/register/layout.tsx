@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import Image from "next/image";
 
 export default function RegisterLayout({
   children,
@@ -12,10 +13,16 @@ export default function RegisterLayout({
       <header className="bg-white border-b border-slate-200 py-4">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105 shrink-0">
-              <span className="text-white font-black text-xs">C</span>
+            <div className="relative w-10 h-10 transition-transform group-hover:scale-105 shrink-0">
+              <Image
+                src="/images/faicom.png"
+                alt="CodeStart Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
-            <span className="font-black text-base sm:text-lg tracking-tighter text-slate-900 uppercase">CodeStart</span>
+            <span className="font-black text-xl tracking-tighter text-slate-900 uppercase">CodeStart</span>
           </Link>
 
           <Link

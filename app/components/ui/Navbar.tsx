@@ -11,10 +11,32 @@ import Image from "next/image";
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isStudent, setIsStudent] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    const checkAuth = () => {
+      const cookies = document.cookie.split('; ');
+      const hasStudentSession = cookies.some(c => c.startsWith('student_email='));
+      setIsStudent(hasStudentSession);
+    };
+
+    checkAuth();
+    // Listen for changes (e.g. login/logout in other tabs or through state)
+    const interval = setInterval(checkAuth, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+        setIsScrolled(window.scrollY > 10);
+
+        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = (winScroll / height) * 100;
+        setScrollProgress(scrolled);
+    };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -40,16 +62,21 @@ export const Navbar = () => {
     { name: "FAQ", href: "/#faq" },
   ];
 
+  if (pathname.startsWith('/portal') || pathname.startsWith('/student/dashboard')) return null;
+
   return (
     <>
       <nav
         className={cn(
-          "fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-in-out isolate",
+          "fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] isolate",
           isScrolled
-            ? "bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 py-3 shadow-sm"
+            ? "bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 py-3 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
             : "bg-transparent py-5 md:py-8"
         )}
       >
+        {/* Scroll Progress Bar */}
+        <div className="absolute bottom-0 left-0 h-[2px] bg-blue-600 transition-all duration-300 ease-out z-[110]" style={{ width: `${scrollProgress}%` }} />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 group relative z-[110] min-w-0 shrink-0">
             <div className="relative w-10 h-10 md:w-12 md:h-12 transition-transform group-hover:scale-110 active:scale-95 shrink-0">
@@ -80,22 +107,50 @@ export const Navbar = () => {
                 </Link>
               ))}
             </div>
-            <Link
-              href="/register"
-              className="px-6 py-3 bg-slate-900 text-white rounded-full text-[11px] font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-blue-600 hover:shadow-blue-100 hover:-translate-y-0.5 active:scale-95 transition-all duration-300"
-            >
-              Enroll Now
-            </Link>
+            <div className="flex items-center gap-4">
+              {isStudent ? (
+                <Link
+                  href="/student/dashboard"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-full text-[11px] font-black uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-slate-900 hover:shadow-slate-100 transition-all duration-300"
+                >
+                  Return to Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="text-[11px] font-black uppercase tracking-widest text-slate-600 hover:text-blue-600 transition-colors"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="px-6 py-3 bg-slate-900 text-white rounded-full text-[11px] font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-blue-600 hover:shadow-blue-100 hover:-translate-y-0.5 active:scale-95 transition-all duration-300"
+                  >
+                    Enroll Now
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Mobile Actions */}
           <div className="flex items-center gap-1 relative z-[110] lg:hidden shrink-0">
-            <Link
-              href="/register"
-              className="px-3 py-1.5 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
-            >
-              Enroll
-            </Link>
+            {isStudent ? (
+              <Link
+                href="/student/dashboard"
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/register"
+                className="px-3 py-1.5 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Enroll
+              </Link>
+            )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-1.5 -mr-1 text-slate-900 active:bg-slate-100 rounded-full transition-colors"
@@ -162,27 +217,45 @@ export const Navbar = () => {
                 </Link>
               ))}
               <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between py-5 border-b border-slate-50 text-slate-400 group"
-              >
-                <span className="text-xl font-black uppercase tracking-tight">Admin Portal</span>
-                <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
+                  href={isStudent ? "/student/dashboard" : "/login"}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-5 border-b border-slate-50 text-slate-600 transition-all group"
+                >
+                  <span className="text-xl font-black uppercase tracking-tight">
+                    {isStudent ? "Student Dashboard" : "Student Login"}
+                  </span>
+                  <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
             </div>
           </div>
 
           <div className="p-8 space-y-4">
              <div className="p-6 bg-slate-50 rounded-2xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Ready to start?</p>
-                <p className="text-sm font-bold text-slate-600 mb-4">Join our engineering-focused learning environment today.</p>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-100 active:scale-[0.98] transition-all"
-                >
-                  Get Started &rarr;
-                </Link>
+                {isStudent ? (
+                  <>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Back to work?</p>
+                    <p className="text-sm font-bold text-slate-600 mb-4">You are currently logged into the student portal.</p>
+                    <Link
+                      href="/student/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-100 active:scale-[0.98] transition-all"
+                    >
+                      Open Dashboard &rarr;
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Ready to start?</p>
+                    <p className="text-sm font-bold text-slate-600 mb-4">Join our engineering-focused learning environment today.</p>
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-100 active:scale-[0.98] transition-all"
+                    >
+                      Get Started &rarr;
+                    </Link>
+                  </>
+                )}
              </div>
           </div>
         </div>

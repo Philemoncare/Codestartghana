@@ -15,7 +15,9 @@ import {
   User,
   BookOpen,
   CreditCard,
-  ShieldCheck
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,17 +28,47 @@ export const EnrollmentWizard = () => {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [registrationId, setRegistrationId] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Master Form State
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
+    password: "",
     whatsapp: "",
     age: "",
     school: "",
     experience: "beginner",
     motivation: ""
   });
+
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [motivationCount, setMotivationCount] = useState(0);
+
+  const calculatePasswordStrength = (pass: string) => {
+    let strength = 0;
+    if (pass.length > 5) strength++;
+    if (pass.length > 8) strength++;
+    if (/[A-Z]/.test(pass)) strength++;
+    if (/[0-9]/.test(pass)) strength++;
+    if (/[^A-Za-z0-9]/.test(pass)) strength++;
+    return strength;
+  };
+
+  const [honeypot, setHoneypot] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateEmail = (email: string) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
+
+  const validateWhatsApp = (num: string) => {
+    return /^[0-9]{10,15}$/.test(num.replace(/\s/g, ''));
+  };
 
   const [paymentData, setPaymentData] = useState({
     senderNumber: "",
@@ -50,6 +82,13 @@ export const EnrollmentWizard = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'password') {
+      setPasswordStrength(calculatePasswordStrength(value));
+    }
+    if (name === 'motivation') {
+      setMotivationCount(value.length);
+    }
   };
 
   const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,28 +120,77 @@ export const EnrollmentWizard = () => {
 
   const handleIdentitySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullName || !formData.email || !formData.whatsapp || !formData.age || !formData.school) {
-      toast.error("Please complete all fields.");
+    if (honeypot) return; // Anti-spam
+
+    const newErrors: Record<string, string> = {};
+    if (!formData.fullName.trim()) newErrors.fullName = "Full Name is required";
+    if (!formData.email.trim() || !validateEmail(formData.email)) newErrors.email = "Valid Email is required";
+    if (!formData.password || formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
+    if (passwordStrength < 2) newErrors.password = "Password is too weak. Use numbers or special chars.";
+    if (!formData.whatsapp.trim() || !validateWhatsApp(formData.whatsapp)) newErrors.whatsapp = "Enter a valid 10-digit WhatsApp number";
+    if (!formData.age || parseInt(formData.age) < 10 || parseInt(formData.age) > 70) newErrors.age = "Valid age (10-70) is required";
+    if (!formData.school.trim()) newErrors.school = "Institution is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.warning(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Validation Error</span>
+          <span className="text-slate-400 text-xs font-medium">Please correct the highlighted fields to proceed.</span>
+        </div>
+      );
       return;
     }
+
+    setErrors({});
     nextStep();
   };
 
   const handleLearningSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.motivation) {
-      toast.error("Please share your motivation.");
+    if (honeypot) return;
+
+    if (!formData.motivation.trim() || formData.motivation.length < 20) {
+      setErrors({ motivation: "Please share more about your motivation (min 20 chars)." });
+      toast.warning(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Insufficient Motivation</span>
+          <span className="text-slate-400 text-xs font-medium">Please provide a more detailed answer about your goals (min 20 chars).</span>
+        </div>
+      );
       return;
     }
 
+    setErrors({});
     setLoading(true);
+    const loadingToast = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Securing Data</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Your technical profile is being encrypted...</span>
+      </div>
+    );
     try {
       const result = await registerService.register(formData);
       setRegistrationId(result.id);
       nextStep();
-      toast.success("Registration info saved.");
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Information Synchronized</span>
+          <span className="text-slate-400 text-xs font-medium">Your learning profile has been recorded successfully.</span>
+        </div>,
+        { id: loadingToast }
+      );
     } catch (error: any) {
-      toast.error(error.message || "Failed to save registration.");
+      console.error("Registration Error:", error);
+      const errorMessage = error.message || (typeof error === 'string' ? error : "An error occurred while saving your data. Please try again.");
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Synchronization Failed</span>
+          <span className="text-slate-400 text-xs font-medium">{errorMessage}</span>
+          {error.details && <span className="text-[10px] text-slate-500 font-mono mt-1 opacity-70">{error.details}</span>}
+        </div>,
+        { id: loadingToast }
+      );
     } finally {
       setLoading(false);
     }
@@ -110,13 +198,29 @@ export const EnrollmentWizard = () => {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registrationId) return toast.error("Session expired. Please restart.");
+    if (!registrationId) return toast.error(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Session Expired</span>
+        <span className="text-slate-400 text-xs font-medium">Please restart the enrollment process.</span>
+      </div>
+    );
     if (!paymentData.senderNumber || !paymentData.transactionId || !file) {
-      toast.error("Please provide all payment details and screenshot.");
+      toast.warning(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Incomplete Payment Info</span>
+          <span className="text-slate-400 text-xs font-medium">MoMo number, Ref ID, and screenshot are required.</span>
+        </div>
+      );
       return;
     }
 
     setLoading(true);
+    const loadingToast = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Verifying Payment</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Cross-referencing transaction records...</span>
+      </div>
+    );
     try {
       await paymentService.submitPayment({
         registrationId: registrationId.toString(),
@@ -126,9 +230,21 @@ export const EnrollmentWizard = () => {
         file
       });
       nextStep();
-      toast.success("Application submitted successfully!");
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Enrollment Finalized</span>
+          <span className="text-slate-400 text-xs font-medium">Welcome to CodeStart. Your journey begins soon.</span>
+        </div>,
+        { id: loadingToast, duration: 10000 }
+      );
     } catch (error: any) {
-      toast.error(error.message || "Payment submission failed.");
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Payment Verification Failed</span>
+          <span className="text-slate-400 text-xs font-medium">We couldn't verify your transaction. Check details and retry.</span>
+        </div>,
+        { id: loadingToast }
+      );
     } finally {
       setLoading(false);
     }
@@ -159,13 +275,41 @@ export const EnrollmentWizard = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormInput label="Full Name" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="John Doe" required />
-              <FormInput label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="john@example.com" required />
-              <FormInput label="WhatsApp Number" name="whatsapp" value={formData.whatsapp} onChange={handleInputChange} placeholder="050 000 0000" required />
-              <FormInput label="Age" name="age" type="number" value={formData.age} onChange={handleInputChange} placeholder="22" required />
+              <FormInput label="Full Name" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="Veronica Amissah" error={errors.fullName} required />
+              <FormInput label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="amissah@example.com" error={errors.email} required />
+              <div className="space-y-2">
+                 <FormInput
+                    label="Secure Password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="••••••••"
+                    error={errors.password}
+                    required
+                    suffix={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    }
+                 />
+                 <div className="flex gap-1 h-1 px-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                       <div key={s} className={cn("flex-1 rounded-full transition-all duration-500", passwordStrength >= s ? (passwordStrength <= 2 ? "bg-red-400" : passwordStrength <= 4 ? "bg-amber-400" : "bg-emerald-500") : "bg-slate-100")} />
+                    ))}
+                 </div>
+              </div>
+              <FormInput label="WhatsApp Number" name="whatsapp" value={formData.whatsapp} onChange={handleInputChange} placeholder="050 000 0000" error={errors.whatsapp} required />
+              <FormInput label="Age" name="age" type="number" value={formData.age} onChange={handleInputChange} placeholder="22" error={errors.age} required />
+              <FormInput label="Current Institution / Occupation" name="school" value={formData.school} onChange={handleInputChange} placeholder="e.g. University of Ghana" error={errors.school} required />
             </div>
 
-            <FormInput label="Current Institution / Occupation" name="school" value={formData.school} onChange={handleInputChange} placeholder="e.g. University of Ghana" required />
+            {/* Honeypot Field */}
+            <input type="text" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} className="hidden" aria-hidden="true" />
 
             <div className="pt-4">
               <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all hover:bg-blue-700 shadow-xl shadow-blue-100">
@@ -202,8 +346,13 @@ export const EnrollmentWizard = () => {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Why CodeStart?</label>
+              <div className="space-y-2 relative">
+                <div className="flex justify-between items-end mb-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Why CodeStart?</label>
+                  <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md", motivationCount < 20 ? "text-rose-500 bg-rose-50" : "text-emerald-500 bg-emerald-50")}>
+                    {motivationCount} / 20 Min
+                  </span>
+                </div>
                 <textarea
                   required
                   name="motivation"
@@ -211,8 +360,12 @@ export const EnrollmentWizard = () => {
                   value={formData.motivation}
                   onChange={handleInputChange}
                   placeholder="Tell us about your technical goals..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all resize-none font-bold text-slate-900 placeholder:text-slate-400"
+                  className={cn(
+                    "w-full bg-slate-50 border rounded-2xl px-5 py-4 focus:ring-4 outline-none transition-all resize-none font-bold text-slate-900 placeholder:text-slate-400",
+                    errors.motivation ? "border-red-500 focus:ring-red-50" : "border-slate-200 focus:ring-blue-50 focus:border-blue-500"
+                  )}
                 />
+                {errors.motivation && <p className="text-[10px] text-red-500 font-bold ml-2">{errors.motivation}</p>}
               </div>
             </div>
 
@@ -346,17 +499,25 @@ const StepIcon = ({ active, completed, icon, label }: { active: boolean; complet
   </div>
 );
 
-const FormInput = ({ label, name, type = "text", value, onChange, placeholder, required = false }: any) => (
+const FormInput = ({ label, name, type = "text", value, onChange, placeholder, required = false, error, suffix }: any) => (
   <div className="space-y-1.5 sm:space-y-2">
     <label className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">{label}</label>
-    <input
-      required={required}
-      name={name}
-      type={type}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className="w-full bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 placeholder:text-slate-300 text-sm sm:text-base"
-    />
+    <div className="relative">
+      <input
+        required={required}
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={cn(
+          "w-full bg-slate-50 border rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 focus:ring-4 outline-none transition-all font-bold text-slate-900 placeholder:text-slate-300 text-sm sm:text-base",
+          error ? "border-red-500 focus:ring-red-50" : "border-slate-200 focus:ring-blue-50 focus:border-blue-500",
+          suffix && "pr-12"
+        )}
+      />
+      {suffix && suffix}
+    </div>
+    {error && <p className="text-[10px] text-red-500 font-bold ml-2">{error}</p>}
   </div>
 );

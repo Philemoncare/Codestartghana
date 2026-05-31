@@ -8,21 +8,15 @@ export async function GET() {
     const regRes = await query('SELECT COUNT(*) FROM registrations');
     const totalApps = parseInt(regRes.rows?.[0]?.count || '0');
 
-    // 2. Get payment statistics
-    const payStatsRes = await query("SELECT payment_status, COUNT(*) FROM payments GROUP BY payment_status");
+    // 2. Get verified students (those with an approved payment)
+    const approvedPayRes = await query("SELECT COUNT(DISTINCT registration_id) FROM payments WHERE payment_status = 'approved'");
+    const approvedCount = parseInt(approvedPayRes.rows?.[0]?.count || '0');
 
-    let approvedCount = 0;
-    let pendingCount = 0;
+    // 3. Get pending payments
+    const pendingPayRes = await query("SELECT COUNT(*) FROM payments WHERE payment_status = 'pending'");
+    const pendingCount = parseInt(pendingPayRes.rows?.[0]?.count || '0');
 
-    if (payStatsRes.rows && Array.isArray(payStatsRes.rows)) {
-      payStatsRes.rows.forEach(row => {
-        const count = parseInt(row.count || '0');
-        if (row.payment_status === 'approved') approvedCount = count;
-        if (row.payment_status === 'pending') pendingCount = count;
-      });
-    }
-
-    // 3. Get recent payments with email tracking
+    // 4. Get recent payments with email tracking
     const recentPaymentsRes = await query(`
       SELECT p.*, r.approval_email_sent, r.approval_email_sent_at
       FROM payments p

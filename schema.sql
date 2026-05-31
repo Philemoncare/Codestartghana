@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   full_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash TEXT,
   whatsapp VARCHAR(50) NOT NULL,
   age INTEGER,
   school VARCHAR(255),
@@ -58,3 +59,18 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS timetable (
+  id SERIAL PRIMARY KEY,
+  day VARCHAR(20) NOT NULL,
+  time VARCHAR(100) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- INITIAL SEED FOR TIMETABLE
+-- INSERT INTO timetable (day, time, topic) VALUES
+-- ('Monday', '1:00 PM - 3:00 PM', 'HTML5 & Semantic Web'),
+-- ('Wednesday', '1:00 PM - 3:00 PM', 'Modern CSS & Flexbox'),
+-- ('Friday', '1:00 PM - 3:00 PM', 'JavaScript Fundamentals');

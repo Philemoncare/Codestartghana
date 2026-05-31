@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminService } from "@/services/adminService";
-import { Users, CheckCircle, Clock, DollarSign, Loader2, ExternalLink, Check, X, ArrowRight, TrendingUp, CreditCard, Mail, RefreshCw, Download, Upload, FileText } from "lucide-react";
+import { Users, CheckCircle, Clock, DollarSign, Loader2, ExternalLink, Check, X, ArrowRight, TrendingUp, CreditCard, Mail, RefreshCw, Download, Upload, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -38,7 +38,12 @@ export default function AdminDashboard() {
   };
 
   const handleExportPDF = async () => {
-    const tid = toast.loading("Generating professional registry PDF...");
+    const tid = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Generating PDF</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Assembling professional student registry...</span>
+      </div>
+    );
     try {
       const registrations = await adminService.getRegistrations();
       const doc = new jsPDF();
@@ -129,16 +134,33 @@ export default function AdminDashboard() {
       }
 
       doc.save(`CodeStart_Official_Registry_${new Date().getTime()}.pdf`);
-      toast.success("Registry PDF generated successfully.", { id: tid });
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Export Complete</span>
+          <span className="text-slate-400 text-xs font-medium">Registry document has been downloaded.</span>
+        </div>,
+        { id: tid }
+      );
     } catch (error) {
       console.error("PDF Export Error:", error);
-      toast.error("Failed to generate PDF document.", { id: tid });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Export Failed</span>
+          <span className="text-slate-400 text-xs font-medium">Unable to generate PDF document.</span>
+        </div>,
+        { id: tid }
+      );
     }
   };
 
   const handleExportJSON = () => {
     window.location.href = '/api/admin/data/export';
-    toast.success("Preparing registry backup download...");
+    toast.success(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Backup Initialized</span>
+        <span className="text-slate-400 text-xs font-medium">Preparing system registry snapshot...</span>
+      </div>
+    );
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +168,12 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const tid = toast.loading("Processing registry import...");
+    const tid = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Restoring Data</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Parsing registry backup file...</span>
+      </div>
+    );
     try {
       const reader = new FileReader();
       reader.onload = async (event) => {
@@ -159,18 +186,42 @@ export default function AdminDashboard() {
           });
           const result = await res.json();
           if (result.success) {
-            toast.success(result.message, { id: tid });
+            toast.success(
+              <div className="flex flex-col gap-1">
+                <span className="font-black text-white text-sm tracking-tight">System Restored</span>
+                <span className="text-slate-400 text-xs font-medium">{result.message}</span>
+              </div>,
+              { id: tid }
+            );
             fetchData();
           } else {
-            toast.error(result.error || "Import failed", { id: tid });
+            toast.error(
+              <div className="flex flex-col gap-1">
+                <span className="font-black text-white text-sm tracking-tight">Import Conflict</span>
+                <span className="text-slate-400 text-xs font-medium">{result.error}</span>
+              </div>,
+              { id: tid }
+            );
           }
         } catch (parseError) {
-          toast.error("Invalid JSON file", { id: tid });
+          toast.error(
+            <div className="flex flex-col gap-1">
+              <span className="font-black text-white text-sm tracking-tight">Invalid File</span>
+              <span className="text-slate-400 text-xs font-medium">Backup format is corrupted or invalid.</span>
+            </div>,
+            { id: tid }
+          );
         }
       };
       reader.readAsText(file);
     } catch (error) {
-      toast.error("Import operation failed", { id: tid });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Operation Failed</span>
+          <span className="text-slate-400 text-xs font-medium">Critical error during data restoration.</span>
+        </div>,
+        { id: tid }
+      );
     }
     // Clear input
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -178,40 +229,130 @@ export default function AdminDashboard() {
 
   const handleStatusUpdate = async (id: string, status: string) => {
 // ... existing handleStatusUpdate ...
-    const tid = toast.loading(`${status === 'approved' ? 'Approving' : 'Rejecting'}...`);
+    const tid = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">{status === 'approved' ? 'Verifying Student' : 'Declining Applicant'}</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Updating system ledger...</span>
+      </div>
+    );
     try {
       await adminService.updatePaymentStatus(id, status);
-      toast.success(`Student ${status} successfully.`, { id: tid });
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Registry Updated</span>
+          <span className="text-slate-400 text-xs font-medium">Application status synchronized.</span>
+        </div>,
+        { id: tid }
+      );
       fetchData();
     } catch (error: any) {
-      toast.error(error.message || "Update failed", { id: tid });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Sync Failed</span>
+          <span className="text-slate-400 text-xs font-medium">Unable to update database.</span>
+        </div>,
+        { id: tid }
+      );
     }
   };
 
   const handleResendWelcome = async (regId: number) => {
-    const toastId = toast.loading("Sending welcome email...");
+    const toastId = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Dispatching Package</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Resending onboarding instructions...</span>
+      </div>
+    );
     try {
       await adminService.resendWelcomeEmail(regId);
-      toast.success("Welcome email sent successfully.", { id: toastId });
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Email Transmitted</span>
+          <span className="text-slate-400 text-xs font-medium">Student has been notified successfully.</span>
+        </div>,
+        { id: toastId }
+      );
     } catch (error: any) {
-      toast.error(error.message || "Failed to send email.", { id: toastId });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Mail Server Error</span>
+          <span className="text-slate-400 text-xs font-medium">Unable to dispatch welcome email.</span>
+        </div>,
+        { id: toastId }
+      );
     }
   };
 
   const handleFullCleanup = async () => {
     if (!confirm("CRITICAL: This will permanently delete ALL registration and payment data. Are you sure?")) return;
-    const tid = toast.loading("Purging system data...");
+    const tid = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Purging Data</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Wiping system registry...</span>
+      </div>
+    );
     try {
       const res = await fetch('/api/admin/data', { method: 'POST' });
       const result = await res.json();
       if (result.success) {
-        toast.success(result.message, { id: tid });
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span className="font-black text-white text-sm tracking-tight">Database Wiped</span>
+            <span className="text-slate-400 text-xs font-medium">All student records cleared.</span>
+          </div>,
+          { id: tid }
+        );
         fetchData();
       } else {
-        toast.error(result.error || "Cleanup failed", { id: tid });
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="font-black text-white text-sm tracking-tight">Cleanup Halted</span>
+            <span className="text-slate-400 text-xs font-medium">{result.error}</span>
+          </div>,
+          { id: tid }
+        );
       }
     } catch (e: any) {
-      toast.error("Network error during cleanup", { id: tid });
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Network Fault</span>
+          <span className="text-slate-400 text-xs font-medium">Unable to connect to the main node.</span>
+        </div>,
+        { id: tid }
+      );
+    }
+  };
+
+  const handleRunMigration = async () => {
+    const tid = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">System Migration</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Upgrading database schema for LMS...</span>
+      </div>
+    );
+    try {
+      const res = await fetch('/api/admin/setup');
+      const result = await res.json();
+      if (result.success) {
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span className="font-black text-white text-sm tracking-tight">Migration Success</span>
+            <span className="text-slate-400 text-xs font-medium">LMS infrastructure is now fully active.</span>
+          </div>,
+          { id: tid }
+        );
+        fetchData();
+      } else {
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="font-black text-white text-sm tracking-tight">Migration Failed</span>
+            <span className="text-slate-400 text-xs font-medium">{result.error}</span>
+          </div>,
+          { id: tid }
+        );
+      }
+    } catch (e: any) {
+      toast.error("Network error during migration", { id: tid });
     }
   };
 
@@ -253,7 +394,9 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">System Overview</h1>
-          <p className="text-slate-500 font-medium">Monitoring cohort metrics and operational flow.</p>
+          <div className="flex items-center gap-2 mt-1">
+             <p className="text-slate-500 font-medium text-xs">Monitoring cohort metrics and registration flow.</p>
+          </div>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <button
@@ -272,11 +415,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <StatCard title="Total Registry" value={loading ? <Skeleton className="h-9 w-12" /> : stats.totalApplications} icon={<Users className="text-blue-600" />} />
         <StatCard title="Pending Review" value={loading ? <Skeleton className="h-9 w-12" /> : stats.pendingPayments} icon={<Clock className="text-yellow-600" />} />
         <StatCard title="Verified Builders" value={loading ? <Skeleton className="h-9 w-12" /> : stats.approvedStudents} icon={<CheckCircle className="text-green-600" />} />
-        <StatCard title="Cohort Revenue" value={loading ? <Skeleton className="h-9 w-24" /> : `GHS ${stats.totalRevenue || 0}`} icon={<DollarSign className="text-slate-900" />} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">

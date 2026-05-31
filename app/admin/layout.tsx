@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Users,
   CreditCard,
+  Calendar,
   LogOut,
   Loader2,
   ShieldCheck,
@@ -88,6 +89,7 @@ export default function AdminLayout({
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/registrations", icon: Users, label: "Registrations" },
     { href: "/admin/payments", icon: CreditCard, label: "Payments" },
+    { href: "/admin/timetable", icon: Calendar, label: "Timetable" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
@@ -179,7 +181,7 @@ export default function AdminLayout({
             )}
            >
              <LogOut size={20} />
-             {!isCollapsed && <span>End Session</span>}
+             {!isCollapsed && <span>Logout</span>}
            </button>
         </div>
       </aside>

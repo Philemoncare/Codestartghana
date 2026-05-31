@@ -19,7 +19,7 @@ const faqs = [
   },
   {
     question: "Is the program online or physical?",
-    answer: "The program supports both remote learning and scheduled in-person sessions depending on the cohort structure and availability."
+    answer: "The program supports both remote learning and scheduled in-person sessions. Approved students can access their detailed session timetable through the Student Portal."
   }
 ];
 

@@ -62,10 +62,20 @@ export default function AdminVerifyPage() {
         body: JSON.stringify({ code: fullCode })
       });
 
-      toast.success("Identity verified. Access granted.");
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Identity Verified</span>
+          <span className="text-slate-400 text-xs font-medium">Access granted to the administrative dashboard.</span>
+        </div>
+      );
       router.push("/admin/dashboard");
     } catch (error: any) {
-      toast.error(error.message || "Invalid or expired code");
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Verification Failed</span>
+          <span className="text-slate-400 text-xs font-medium">{error.message || "The code entered is invalid or has expired."}</span>
+        </div>
+      );
     } finally {
       setLoading(false);
     }
@@ -74,18 +84,36 @@ export default function AdminVerifyPage() {
   const handleResend = async () => {
     if (resending) return;
     setResending(true);
+    const resendToast = toast.loading(
+      <div className="flex flex-col gap-1">
+        <span className="font-black text-white text-sm tracking-tight">Dispatching Key</span>
+        <span className="text-slate-400 text-xs font-medium animate-pulse">Requesting new verification code...</span>
+      </div>
+    );
     try {
       await apiFetch('/api/admin/resend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      toast.success("A new verification code has been sent.");
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">New Code Sent</span>
+          <span className="text-slate-400 text-xs font-medium">Check your inbox for the fresh verification key.</span>
+        </div>,
+        { id: resendToast }
+      );
       setTimer(600);
       setCode(["", "", "", "", "", ""]);
       inputs.current[0]?.focus();
     } catch (error: any) {
-      toast.error(error.message || "Failed to resend code");
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-black text-white text-sm tracking-tight">Transmission Error</span>
+          <span className="text-slate-400 text-xs font-medium">Unable to send a new code at this time.</span>
+        </div>,
+        { id: resendToast }
+      );
     } finally {
       setResending(false);
     }

@@ -2,55 +2,80 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const session = request.cookies.get('admin_session');
-  const pendingSession = request.cookies.get('pending_admin_id');
+  const adminSession = request.cookies.get('admin_session');
+  const pendingAdminId = request.cookies.get('pending_admin_id');
+  const studentSession = request.cookies.get('student_email');
   const { pathname } = request.nextUrl;
 
-  // STRICT ADMIN PROTECTION
+  // 1. STUDENT PORTAL PROTECTION & REDIRECTION
+  const isStudentPortalRoute = pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/profile');
+  const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/enroll';
+
+  // If logged in as a student
+  if (studentSession) {
+    // If trying to access public landing pages or registration
+    if (isPublicRoute) {
+      return NextResponse.redirect(new URL('/student/dashboard', request.url));
+    }
+  } else {
+    // If NOT logged in as a student but trying to access student portal
+    if (isStudentPortalRoute) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
+
+  // 2. ADMIN PROTECTION
   if (pathname.startsWith('/admin')) {
-    // 1. Allow access to the login page
+    // Allow login page
     if (pathname === '/admin/login') {
-      if (session && session.value === 'active') {
+      if (adminSession && adminSession.value === 'active') {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       }
       return NextResponse.next();
     }
 
-    // 2. Allow access to the verification page ONLY if there's a pending session
+    // Allow verification page if pending
     if (pathname === '/admin/verify') {
-      if (session && session.value === 'active') {
+      if (adminSession && adminSession.value === 'active') {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       }
-      if (!pendingSession) {
+      if (!pendingAdminId) {
         return NextResponse.redirect(new URL('/admin/login', request.url));
       }
       return NextResponse.next();
     }
 
-    // 3. Handle root /admin
+    // Handle root /admin
     if (pathname === '/admin') {
-      if (session && session.value === 'active') {
+      if (adminSession && adminSession.value === 'active') {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       } else {
         return NextResponse.redirect(new URL('/admin/login', request.url));
       }
     }
 
-    // 4. Protect all other /admin routes
-    if (!session || session.value !== 'active') {
-      const loginUrl = new URL('/admin/login', request.url);
-      return NextResponse.redirect(loginUrl);
+    // Protect all other /admin routes
+    if (!adminSession || adminSession.value !== 'active') {
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
   }
 
-  // Handle old login path if it still exists
-  if (pathname === '/login') {
-     return NextResponse.redirect(new URL('/admin/login', request.url));
+  // Handle old paths
+  if (pathname === '/student/login' || pathname === '/login/student') {
+     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*', '/login'],
+  matcher: [
+    '/',
+    '/login',
+    '/register',
+    '/enroll',
+    '/admin',
+    '/admin/:path*',
+    '/student/:path*'
+  ],
 };

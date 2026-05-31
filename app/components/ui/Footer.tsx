@@ -1,9 +1,25 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Github, Linkedin, Twitter, Mail, MapPin } from "lucide-react";
 
 import Image from "next/image";
 
 export const Footer = () => {
+  const [isStudent, setIsStudent] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const cookies = document.cookie.split('; ');
+      const hasStudentSession = cookies.some(c => c.startsWith('student_email='));
+      setIsStudent(hasStudentSession);
+    };
+
+    checkAuth();
+    const interval = setInterval(checkAuth, 5000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <footer className="bg-white border-t border-slate-100 pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
@@ -32,9 +48,10 @@ export const Footer = () => {
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Explore</h4>
             <ul className="space-y-4">
               <FooterLink href="/" label="Home" />
-              <FooterLink href="#curriculum" label="Curriculum" />
-              <FooterLink href="#faq" label="FAQ" />
-              <FooterLink href="/register" label="Enrollment" />
+              <FooterLink href={isStudent ? "/student/dashboard" : "/login"} label={isStudent ? "Dashboard" : "Student Login"} />
+              <FooterLink href="/#curriculum" label="Curriculum" />
+              <FooterLink href="/#faq" label="FAQ" />
+              {!isStudent && <FooterLink href="/register" label="Enrollment" />}
             </ul>
           </div>
 
@@ -74,9 +91,14 @@ export const Footer = () => {
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
             &copy; 2026 CodeStart Ghana. All rights reserved.
           </p>
-          <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <Link href="/privacy" className="hover:text-slate-900 transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-slate-900 transition-colors">Terms of Service</Link>
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms of Service</Link>
+            <span className="hidden sm:inline text-slate-200">|</span>
+            <span className="flex items-center gap-1.5">
+               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+               System Operational
+            </span>
           </div>
         </div>
       </div>

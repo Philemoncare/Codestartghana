@@ -21,16 +21,21 @@ export default function SettingsPage() {
     const confirmPassword = formData.get("confirmPassword") as string;
 
     if (newPassword !== confirmPassword) {
-      toast.error("New keys do not match.");
+      toast.warning("⚠️ Security keys do not match.", {
+          description: "Please ensure both entries are identical."
+      });
       return;
     }
 
     if (newPassword.length < 8) {
-      toast.error("Security key must be at least 8 characters.");
+      toast.warning("⚠️ Key too short.", {
+          description: "For maximum security, use at least 8 characters."
+      });
       return;
     }
 
     setLoading(true);
+    const securityToast = toast.loading("⏳ Updating security protocol...");
     try {
       await apiFetch('/api/admin/change-password', {
         method: 'POST',
@@ -38,12 +43,18 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword, newPassword })
       });
 
-      toast.success("Security key updated. Please log in again.");
+      toast.success("🔐 Security key updated.", {
+          id: securityToast,
+          description: "Access keys refreshed. Re-authenticating..."
+      });
       setTimeout(() => {
         router.push("/admin/login");
       }, 2000);
     } catch (error: any) {
-      toast.error(error.message || "Failed to update security key.");
+      toast.error("❌ Update failed", {
+          id: securityToast,
+          description: error.message || "Unable to update security credentials."
+      });
     } finally {
       setLoading(false);
     }
@@ -55,15 +66,22 @@ export default function SettingsPage() {
     const email = formData.get("email") as string;
 
     setLoading(true);
+    const profileToast = toast.loading("⏳ Saving profile changes...");
     try {
       await apiFetch('/api/admin/update-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      toast.success("Profile information updated.");
+      toast.success("✅ Profile updated successfully.", {
+          id: profileToast,
+          description: "Your administrative details have been synchronized."
+      });
     } catch (error: any) {
-      toast.error(error.message || "Failed to update profile.");
+      toast.error("❌ Profile update failed", {
+          id: profileToast,
+          description: error.message || "Failed to synchronize profile information."
+      });
     } finally {
       setLoading(false);
     }

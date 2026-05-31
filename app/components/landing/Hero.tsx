@@ -1,8 +1,17 @@
-import { ArrowUpRight, Play } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { ArrowUpRight, Play, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 export const Hero = () => {
+  const [isStudent, setIsStudent] = useState(false);
+
+  useEffect(() => {
+    const hasStudentSession = document.cookie.split('; ').some(c => c.startsWith('student_email='));
+    setIsStudent(hasStudentSession);
+  }, []);
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-50 isolate">
       {/*
@@ -17,7 +26,7 @@ export const Hero = () => {
           priority
           sizes="100vw"
           quality={90}
-          className="object-cover opacity-[0.35] scale-105 will-change-transform"
+          className="object-cover opacity-[0.35] scale-105 animate-float"
         />
         {/* Advanced Blend Overlays */}
         <div className="absolute inset-0 bg-gradient-to-tr from-white via-white/40 to-transparent" />
@@ -40,13 +49,23 @@ export const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 pt-6 w-full sm:w-auto px-4 sm:px-0">
-            <Link
-              href="/register"
-              className="group w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[12px] sm:text-[13px] flex items-center justify-center gap-3 transition-all hover:bg-blue-600 hover:shadow-2xl hover:shadow-blue-200 active:scale-95"
-            >
-              Start Enrollment
-              <ArrowUpRight size={20} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-            </Link>
+            {isStudent ? (
+              <Link
+                href="/student/dashboard"
+                className="group w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[12px] sm:text-[13px] flex items-center justify-center gap-3 transition-all hover:bg-slate-900 hover:shadow-2xl hover:shadow-slate-200 active:scale-95"
+              >
+                Go to Portal Dashboard
+                <LayoutDashboard size={20} className="transition-transform group-hover:scale-110" />
+              </Link>
+            ) : (
+              <Link
+                href="/register"
+                className="group w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[12px] sm:text-[13px] flex items-center justify-center gap-3 transition-all hover:bg-blue-600 hover:shadow-2xl hover:shadow-blue-200 active:scale-95"
+              >
+                Start Enrollment
+                <ArrowUpRight size={20} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+              </Link>
+            )}
             <Link
               href="#curriculum"
               className="w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[12px] sm:text-[13px] flex items-center justify-center gap-3 transition-all hover:border-slate-400 active:scale-95 shadow-sm"

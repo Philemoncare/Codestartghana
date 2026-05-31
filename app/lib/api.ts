@@ -29,7 +29,12 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     }
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || `Error ${response.status}: Request failed.`);
+      const msg = data.error || data.message || `Error ${response.status}: Request failed.`;
+      const err = new Error(msg);
+      if (data.details) {
+        (err as any).details = data.details;
+      }
+      throw err;
     }
     return data;
   } else {

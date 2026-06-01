@@ -83,8 +83,8 @@ export async function GET() {
     return NextResponse.json({
       stats: { totalApplications: 0, pendingPayments: 0, approvedStudents: 0, totalRevenue: 0 },
       payments: [],
-      error: 'Database connection or query failed'
-    }, { status: 200 }); // Return 200 so apiFetch doesn't throw, but UI can show error state if needed
+      error: error.message || 'Database connection or query failed'
+    }, { status: 200 });
   }
 }
 

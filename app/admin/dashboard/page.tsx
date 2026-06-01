@@ -30,8 +30,14 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const result = await adminService.getDashboardData();
+      // If we got an error from the API catch block
       if (result.error) {
-        notify.error("System Notice", result.error);
+        // Only show toast if it hasn't been shown in the last 10 seconds to avoid double toasts in StrictMode
+        const lastError = (window as any).last_db_error_time || 0;
+        if (Date.now() - lastError > 10000) {
+          notify.error("System Notice", result.error);
+          (window as any).last_db_error_time = Date.now();
+        }
       }
       setData(result);
     } catch (error: any) {

@@ -38,13 +38,7 @@ export default function AdminLayout({
   }, [pathname, router]);
 
   useEffect(() => {
-    // Safety timeout: if loading is still true after 15s, something is stuck
-    const safetyTimer = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-        notify.error("Connection Timeout", "The admin system is taking too long to respond. Please check your database.");
-      }
-    }, 15000);
+    let safetyTimer: NodeJS.Timeout;
 
     const checkUser = async () => {
       if (pathname === '/admin/login' || pathname === '/admin/verify') {
@@ -52,9 +46,16 @@ export default function AdminLayout({
         return;
       }
 
+      // Safety timeout: if loading is still true after 30s, something is stuck
+      safetyTimer = setTimeout(() => {
+        setLoading(false);
+        notify.error("Connection Timeout", "The admin system is taking too long to respond. Please check your database.");
+      }, 30000);
+
       // Quick check for session cookie before hitting the DB
       const hasToken = document.cookie.split('; ').some(c => c.startsWith('admin_session_token='));
       if (!hasToken) {
+        clearTimeout(safetyTimer);
         router.push("/admin/login");
         return;
       }
@@ -62,8 +63,10 @@ export default function AdminLayout({
       try {
         const result = await apiFetch('/api/auth/me');
         setUser(result.user);
+        clearTimeout(safetyTimer);
         setLoading(false);
       } catch (error) {
+        clearTimeout(safetyTimer);
         console.error("Admin Auth Error:", error);
         router.push("/admin/login");
         // Fallback: stop loading even if redirect is slow
@@ -71,6 +74,10 @@ export default function AdminLayout({
       }
     };
     checkUser();
+
+    return () => {
+      if (safetyTimer) clearTimeout(safetyTimer);
+    };
   }, [pathname, router]);
 
   const handleLogout = async () => {

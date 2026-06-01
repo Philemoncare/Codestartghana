@@ -8,7 +8,6 @@ import { LogOut, Menu, X, Home, BookOpen, Map, FolderKanban, FileText, Bell, Set
 import { studentService } from "@/services/studentService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { AnnouncementBanner } from "../ui/AnnouncementBanner";
 
 export const StudentNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,8 +45,6 @@ export const StudentNavbar = () => {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[110] bg-white border-b border-slate-100 shadow-sm">
-      <AnnouncementBanner />
-
       <nav className="max-w-7xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
         <div className="flex items-center gap-4 md:gap-10">
           <Link href="/student/dashboard" className="flex items-center gap-2 group">

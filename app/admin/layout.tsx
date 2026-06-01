@@ -53,14 +53,6 @@ export default function AdminLayout({
         notify.error("Connection Timeout", "The admin system is taking too long to respond. Please check your database.");
       }, 30000);
 
-      // Quick check for session cookie before hitting the DB
-      const hasToken = document.cookie.split('; ').some(c => c.startsWith('admin_session_token='));
-      if (!hasToken) {
-        clearTimeout(safetyTimer);
-        router.push("/admin/login");
-        return;
-      }
-
       try {
         const result = await apiFetch('/api/auth/me');
         setUser(result.user);

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import Image from "next/image";
-import { AnnouncementBanner } from "@/components/ui/AnnouncementBanner";
 
 export default function RegisterLayout({
   children,
@@ -11,7 +10,6 @@ export default function RegisterLayout({
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <div className="fixed top-0 left-0 right-0 z-[1000]">
-        <AnnouncementBanner />
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 py-4 shadow-sm">
           <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 group">
@@ -38,7 +36,7 @@ export default function RegisterLayout({
         </header>
       </div>
 
-      <main className="flex-1 mt-32 md:mt-40">
+      <main className="flex-1 mt-20 md:mt-24">
         {children}
       </main>
 

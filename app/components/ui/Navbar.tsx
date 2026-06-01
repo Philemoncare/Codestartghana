@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Menu, X, ChevronRight } from "lucide-react";
-import { AnnouncementBanner } from "./AnnouncementBanner";
 import Image from "next/image";
 
 export const Navbar = () => {
@@ -65,8 +64,6 @@ export const Navbar = () => {
         ? "bg-white/90 backdrop-blur-xl shadow-lg border-b border-slate-100"
         : "bg-white/50 backdrop-blur-sm border-b border-transparent"
     )}>
-      <AnnouncementBanner />
-
       <nav className={cn(
         "max-w-7xl mx-auto px-6 sm:px-8 flex items-center justify-between transition-all duration-500",
         isScrolled ? "h-16 md:h-20" : "h-20 md:h-24"

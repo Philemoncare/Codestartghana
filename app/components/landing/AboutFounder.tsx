@@ -58,10 +58,6 @@ export const AboutFounder = () => {
               <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight uppercase leading-none">
                 About <span className="text-blue-600">CodeStart Ghana</span>
               </h2>
-              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                 <p className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Founder & System Administrator</p>
-                 <div className="hidden lg:block h-px w-12 bg-slate-100" />
-              </div>
             </div>
 
             <div className="relative">

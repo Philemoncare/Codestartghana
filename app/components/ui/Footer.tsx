@@ -63,9 +63,6 @@ export const Footer = () => {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             &copy; {currentYear} CodeStart Ghana. All rights reserved.
           </p>
-          <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">
-            Founded by Philemon Melabah
-          </p>
         </div>
       </div>
     </footer>

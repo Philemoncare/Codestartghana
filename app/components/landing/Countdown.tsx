@@ -18,25 +18,12 @@ export const Countdown = () => {
 
   useEffect(() => {
     let serverOffset = 0;
+    let timer: NodeJS.Timeout;
 
-    const syncTime = async () => {
-      try {
-        const start = Date.now();
-        const res = await fetch('/api/system/time');
-        const data = await res.json();
-        const end = Date.now();
-        const latency = (end - start) / 2;
-        serverOffset = data.timestamp - (end - latency);
-      } catch (e) {
-        console.warn("Timer: Falling back to local clock", e);
-      }
-    };
-
-    const calculateTimeLeft = () => {
-      const now = new Date(Date.now() + serverOffset);
+    const calculateTimeLeft = (offset = 0) => {
+      const now = new Date(Date.now() + offset);
       const difference = TARGET_DATE.getTime() - now.getTime();
 
-      // Start date for progress calculation (from Jan 1, 2025)
       const startDate = new Date('2025-01-01T00:00:00');
       const totalDuration = TARGET_DATE.getTime() - startDate.getTime();
       const elapsed = now.getTime() - startDate.getTime();
@@ -58,12 +45,33 @@ export const Countdown = () => {
       });
     };
 
-    syncTime().then(() => {
-      calculateTimeLeft();
-      const timer = setInterval(calculateTimeLeft, 1000);
-      return () => clearInterval(timer);
-    });
+    const syncTime = async () => {
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/system/time');
+        const data = await res.json();
+        const end = Date.now();
+        const latency = (end - start) / 2;
+        serverOffset = data.timestamp - (end - latency);
+        // Re-calculate with sync offset
+        calculateTimeLeft(serverOffset);
+      } catch (e) {
+        console.warn("Timer: Sync failed, using local clock", e);
+      }
+    };
 
+    // Initial immediate calculation with local time
+    calculateTimeLeft(0);
+
+    // Start interval
+    timer = setInterval(() => calculateTimeLeft(serverOffset), 1000);
+
+    // Perform background sync
+    syncTime();
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   const scrollToRegistration = () => {
@@ -74,17 +82,6 @@ export const Countdown = () => {
         window.location.href = '/register';
     }
   };
-
-  if (!timeLeft.isReady) {
-    return (
-      <section className="py-20 md:py-32 bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-           <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
-           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Atomic Clock...</p>
-        </div>
-      </section>
-    );
-  }
 
   if (timeLeft.isFinished) {
     return (

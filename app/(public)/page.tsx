@@ -5,6 +5,7 @@ import { Hero } from "@/components/landing/Hero";
 import { Curriculum } from "@/components/landing/Curriculum";
 import { FAQ } from "@/components/landing/FAQ";
 import { AboutFounder } from "@/components/landing/AboutFounder";
+import { Countdown } from "@/components/landing/Countdown";
 import {
   Globe, Laptop, Zap, ArrowUpRight, LayoutDashboard,
   ShieldCheck, Users, GraduationCap, Code2,
@@ -27,16 +28,71 @@ export default function LandingPage() {
     <main className="flex min-h-screen flex-col bg-white">
       <Hero />
 
-      {/* Trust & Stats Section - Modern SaaS stats bar */}
-      <section className="py-10 border-b border-slate-100 bg-white relative z-20 -mt-12 mx-auto w-[92%] max-w-7xl rounded-[2rem] shadow-[0_15px_40px_-15px_rgba(0,0,0,0.06)] px-10 flex flex-wrap justify-between items-center gap-10">
-        <StatBarItem icon={<Users size={20} className="text-blue-600" />} value="Active" label="Students" />
-        <div className="h-10 w-px bg-slate-100 hidden md:block" />
-        <StatBarItem icon={<CheckCircle2 size={20} className="text-blue-600" />} value="98%" label="Completion" />
-        <div className="h-10 w-px bg-slate-100 hidden md:block" />
-        <StatBarItem icon={<GraduationCap size={20} className="text-blue-600" />} value="4" label="Cohorts" />
-        <div className="h-10 w-px bg-slate-100 hidden md:block" />
-        <StatBarItem icon={<Code2 size={20} className="text-blue-600" />} value="50+" label="Projects Built" />
+      {/* Learning Impact Highlights - Premium Compact Cards */}
+      <section className="py-12 bg-white relative z-20 -mt-16 mx-auto w-[92%] max-w-6xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+          {/* Card 1: Live Learning */}
+          <div className="group relative bg-white border border-slate-100 rounded-[2rem] p-6 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-20px_rgba(37,99,235,0.15)] transition-all duration-500 hover:-translate-y-1">
+            <div className="flex flex-col gap-4 relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                <Globe size={20} className="relative z-10 group-hover:scale-110 transition-transform" />
+              </div>
+              <div>
+                <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.15em] mb-1.5">Live Environment</h4>
+                <p className="text-slate-400 text-[9px] font-bold leading-relaxed uppercase tracking-widest">Real-time interactive sessions with feedback.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Project-Based */}
+          <div className="group relative bg-slate-950 rounded-[2rem] p-6 shadow-xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/10 blur-2xl rounded-full -mr-12 -mt-12" />
+             <div className="flex flex-col gap-4 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-blue-400 border border-white/10 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                   <Code2 size={20} />
+                </div>
+                <div>
+                   <h4 className="text-[11px] font-black text-white uppercase tracking-[0.15em] mb-1.5">Build Reality</h4>
+                   <p className="text-slate-500 text-[9px] font-bold leading-relaxed uppercase tracking-widest">Mastery through production-grade delivery.</p>
+                </div>
+             </div>
+          </div>
+
+          {/* Card 3: Cohort System */}
+          <div className="group bg-white border border-slate-100 rounded-[2rem] p-6 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-20px_rgba(99,102,241,0.15)] transition-all duration-500 hover:-translate-y-1">
+             <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-1.5 h-10">
+                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                   <div className="h-px w-4 bg-slate-100" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-indigo-300 transition-colors" />
+                   <div className="h-px w-4 bg-slate-100" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-100 group-hover:bg-indigo-200 transition-colors" />
+                </div>
+                <div>
+                   <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.15em] mb-1.5">Structured Path</h4>
+                   <p className="text-slate-400 text-[9px] font-bold leading-relaxed uppercase tracking-widest">Beginner to advanced mastery pathways.</p>
+                </div>
+             </div>
+          </div>
+
+          {/* Card 4: Industry Focus */}
+          <div className="group relative bg-white border border-slate-100 rounded-[2rem] p-6 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-20px_rgba(16,185,129,0.15)] transition-all duration-500 hover:-translate-y-1">
+             <div className="flex flex-col gap-4 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:rotate-12 transition-transform">
+                   <Search size={20} />
+                </div>
+                <div>
+                   <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.15em] mb-1.5">Market Ready</h4>
+                   <p className="text-slate-400 text-[9px] font-bold leading-relaxed uppercase tracking-widest">Strict alignment with professional roles.</p>
+                </div>
+             </div>
+          </div>
+
+        </div>
       </section>
+
+      <Countdown />
 
       {/* Program Preview Section - Structured Card Grid */}
       <section id="curriculum" className="py-24 md:py-32 bg-white">
@@ -181,18 +237,6 @@ export default function LandingPage() {
     </main>
   );
 }
-
-const StatBarItem = ({ icon, value, label }: any) => (
-  <div className="flex items-center gap-4">
-    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-blue-600">
-      {icon}
-    </div>
-    <div>
-      <p className="text-xl font-black text-slate-900 leading-none">{value}</p>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{label}</p>
-    </div>
-  </div>
-);
 
 const ModuleCard = ({ index, title, description, tags }: any) => (
   <div className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:border-blue-500/10 transition-all group relative overflow-hidden">

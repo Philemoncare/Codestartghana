@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import Image from "next/image";
 import { SystemAlerts } from "@/components/admin/SystemAlerts";
+import { notify } from "@/lib/notify";
 
 export default function AdminLayout({
   children,

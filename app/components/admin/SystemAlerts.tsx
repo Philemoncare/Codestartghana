@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Bell,
   AlertCircle,
@@ -9,26 +9,34 @@ import {
   Check,
   Trash2,
   X,
-  Filter,
-  CheckCheck,
   RefreshCw,
-  Clock
+  Clock,
+  CheckCheck,
+  Zap,
+  CreditCard,
+  UserPlus,
+  ShieldAlert,
+  Inbox
 } from "lucide-react";
 import { alertService, Alert } from "@/services/alertService";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+type FilterTab = 'all' | 'unread' | 'system' | 'student' | 'admin';
+
 export function SystemAlerts() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const [filter, setFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchAlerts = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
     try {
-      const data = await alertService.getAlerts(filter !== 'all' ? { type: filter } : {});
+      // We fetch all and filter locally for a more snappy feel,
+      // but we could also fetch with filters if the list is huge.
+      const data = await alertService.getAlerts();
       setAlerts(data);
     } catch (error) {
       console.error("Failed to fetch alerts", error);
@@ -36,16 +44,23 @@ export function SystemAlerts() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
     fetchAlerts(true);
-    // Polling every 30 seconds for real-time feel
     const interval = setInterval(() => fetchAlerts(), 30000);
     return () => clearInterval(interval);
   }, [fetchAlerts]);
 
   const unreadCount = alerts.filter(a => !a.is_read).length;
+
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter(alert => {
+      if (activeTab === 'all') return true;
+      if (activeTab === 'unread') return !alert.is_read;
+      return alert.source === activeTab;
+    });
+  }, [alerts, activeTab]);
 
   const handleMarkAsRead = async (id: number) => {
     try {
@@ -60,7 +75,7 @@ export function SystemAlerts() {
     try {
       await alertService.markAllRead();
       setAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
-      toast.success("All alerts marked as read");
+      toast.success("All notifications marked as read");
     } catch (error) {
       toast.error("Failed to mark all as read");
     }
@@ -71,34 +86,41 @@ export function SystemAlerts() {
       await alertService.deleteAlert(id);
       setAlerts(prev => prev.filter(a => a.id !== id));
     } catch (error) {
-      toast.error("Failed to delete alert");
+      toast.error("Failed to delete notification");
     }
   };
 
   const handleClearAll = async () => {
-    if (!confirm("Are you sure you want to clear all alerts?")) return;
+    if (!confirm("Permanently clear all notifications?")) return;
     try {
       await alertService.clearAll();
       setAlerts([]);
-      toast.success("All alerts cleared");
+      toast.success("Notification center cleared");
     } catch (error) {
-      toast.error("Failed to clear alerts");
+      toast.error("Failed to clear notifications");
     }
   };
 
-  const getTypeStyles = (type: string) => {
-    switch (type) {
-      case 'critical': return "text-red-600 bg-red-50 border-red-100";
-      case 'warning': return "text-amber-600 bg-amber-50 border-amber-100";
-      default: return "text-blue-600 bg-blue-50 border-blue-100";
+  const getSourceIcon = (source: string, type: string) => {
+    if (type === 'critical') return <ShieldAlert size={18} />;
+
+    switch (source) {
+      case 'system': return <Zap size={18} />;
+      case 'student': return <UserPlus size={18} />;
+      case 'admin': return <ShieldAlert size={18} />;
+      default: return <Info size={18} />;
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'critical': return <AlertCircle size={16} />;
-      case 'warning': return <AlertTriangle size={16} />;
-      default: return <Info size={16} />;
+  const getSourceStyles = (source: string, type: string) => {
+    if (type === 'critical') return "bg-rose-50 text-rose-600 border-rose-100 shadow-rose-100";
+    if (type === 'warning') return "bg-amber-50 text-amber-600 border-amber-100 shadow-amber-100";
+
+    switch (source) {
+      case 'system': return "bg-blue-50 text-blue-600 border-blue-100 shadow-blue-100";
+      case 'student': return "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-100";
+      case 'admin': return "bg-indigo-50 text-indigo-600 border-indigo-100 shadow-indigo-100";
+      default: return "bg-slate-50 text-slate-600 border-slate-100 shadow-slate-100";
     }
   };
 
@@ -106,11 +128,14 @@ export function SystemAlerts() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 transition-all"
+        className={cn(
+          "relative p-3 rounded-2xl transition-all duration-300 active:scale-95 group",
+          isOpen ? "bg-slate-900 text-white shadow-xl" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+        )}
       >
-        <Bell size={20} />
+        <Bell size={22} className={cn(unreadCount > 0 && !isOpen && "animate-bounce-slow")} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in">
+          <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-red-500 text-white text-[11px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-lg animate-in zoom-in duration-500">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -118,126 +143,144 @@ export function SystemAlerts() {
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-[140] bg-slate-900/20 backdrop-blur-[2px] sm:bg-transparent sm:backdrop-blur-none" onClick={() => setIsOpen(false)} />
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-[1000] bg-slate-900/40 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none" onClick={() => setIsOpen(false)} />
+
+          {/* Notification Panel */}
           <div className={cn(
-            "fixed inset-x-4 top-24 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3 w-auto sm:w-[400px] bg-white border border-slate-200 rounded-3xl shadow-2xl z-[150] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
-            "max-h-[80vh] sm:max-h-[600px] flex flex-col"
+            "fixed inset-x-4 top-20 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-4 w-auto sm:w-[480px] bg-white border border-slate-200 rounded-[2rem] shadow-2xl z-[1010] overflow-hidden flex flex-col transition-all duration-500",
+            "max-h-[85vh] sm:max-h-[700px] animate-in fade-in slide-in-from-top-4"
           )}>
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30 shrink-0">
               <div>
-                <h3 className="font-black text-slate-900 text-xs sm:text-sm tracking-tight uppercase">System Alerts</h3>
-                <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Real-time Monitoring</p>
+                <h3 className="font-black text-slate-900 text-lg tracking-tight uppercase">Activity Stream</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Live Monitoring System</p>
+                </div>
               </div>
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setIsRefreshing(true); fetchAlerts(true); }}
-                  className={cn("p-2 text-slate-400 hover:text-slate-900 transition-all", isRefreshing && "animate-spin")}
+                  className={cn("p-2.5 bg-white border border-slate-100 text-slate-400 hover:text-slate-900 hover:shadow-md rounded-xl transition-all", isRefreshing && "animate-spin")}
+                  title="Refresh stream"
                 >
-                  <RefreshCw size={14} />
+                  <RefreshCw size={16} />
                 </button>
-                <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:text-slate-900">
-                  <X size={16} />
+                <button onClick={() => setIsOpen(false)} className="p-2.5 bg-slate-900 text-white hover:bg-slate-800 rounded-xl transition-all shadow-lg active:scale-90">
+                  <X size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="p-2 sm:p-3 border-b border-slate-50 flex gap-2 overflow-x-auto shrink-0 no-scrollbar">
-              {['all', 'critical', 'warning', 'info'].map((t) => (
+            {/* Filter Tabs */}
+            <div className="px-6 py-4 border-b border-slate-50 flex gap-2 overflow-x-auto shrink-0 no-scrollbar">
+              {(['all', 'unread', 'system', 'student', 'admin'] as FilterTab[]).map((tab) => (
                 <button
-                  key={t}
-                  onClick={() => setFilter(t)}
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                    filter === t
-                      ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
-                      : "bg-white border border-slate-100 text-slate-400 hover:bg-slate-50"
+                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border capitalize",
+                    activeTab === tab
+                      ? "bg-slate-900 text-white shadow-lg border-slate-900"
+                      : "bg-white border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
                   )}
                 >
-                  {t}
+                  {tab === 'all' ? 'All Activity' : tab === 'student' ? 'Student' : tab}
                 </button>
               ))}
             </div>
 
+            {/* Notifications List */}
             <div className="flex-1 overflow-y-auto bg-white custom-scrollbar">
               {loading ? (
-                <div className="p-10 flex flex-col items-center justify-center gap-3">
+                <div className="py-20 flex flex-col items-center justify-center gap-4">
                   <div className="relative">
-                    <RefreshCw className="animate-spin text-blue-600" size={24} />
-                    <div className="absolute inset-0 blur-lg bg-blue-400/20 animate-pulse" />
+                    <div className="w-16 h-16 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
+                    <Zap className="absolute inset-0 m-auto text-blue-600 animate-pulse" size={24} />
                   </div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Synchronizing Logs...</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Synchronizing...</span>
                 </div>
-              ) : alerts.length === 0 ? (
-                <div className="p-12 text-center">
-                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300 border border-dashed border-slate-200">
-                    <Bell size={24} />
+              ) : filteredAlerts.length === 0 ? (
+                <div className="py-24 px-10 text-center">
+                  <div className="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-slate-200 border-2 border-dashed border-slate-100">
+                    <Inbox size={32} />
                   </div>
-                  <p className="text-slate-500 font-bold text-xs uppercase tracking-tight">No alerts found</p>
-                  <p className="text-slate-400 text-[10px] mt-1 italic">The system is currently stable.</p>
+                  <h4 className="text-slate-900 font-black uppercase tracking-tight mb-2">No notifications found</h4>
+                  <p className="text-slate-400 text-xs font-medium leading-relaxed italic">Everything is quiet in the {activeTab === 'all' ? 'command center' : activeTab + ' logs'}.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-50">
-                  {alerts.map((alert) => (
+                  {filteredAlerts.map((alert, index) => (
                     <div
                       key={alert.id}
                       className={cn(
-                        "p-4 sm:p-5 transition-all hover:bg-slate-50/80 group relative",
-                        !alert.is_read && "bg-blue-50/20"
+                        "p-5 sm:p-6 transition-all hover:bg-slate-50 group relative animate-in fade-in slide-in-from-bottom-2",
+                        !alert.is_read && "bg-blue-50/10 border-l-4 border-l-blue-600",
+                        "duration-300"
                       )}
+                      style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <div className="flex gap-4">
+                      <div className="flex gap-5">
                         <div className={cn(
-                          "w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105",
-                          getTypeStyles(alert.type)
+                          "w-12 h-12 rounded-2xl border-2 flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:scale-110 group-hover:rotate-3",
+                          getSourceStyles(alert.source, alert.type)
                         )}>
-                          {getTypeIcon(alert.type)}
+                          {getSourceIcon(alert.source, alert.type)}
                         </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex justify-between items-start gap-2">
-                            <p className={cn(
-                              "text-[11px] sm:text-xs font-bold leading-relaxed tracking-tight",
-                              alert.is_read ? "text-slate-500" : "text-slate-900"
-                            )}>
-                              {alert.message}
-                            </p>
-                            {!alert.is_read && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full shrink-0 mt-1.5 shadow-[0_0_10px_rgba(37,99,235,0.5)]" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 mt-2.5">
-                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                              <Clock size={10} />
-                              {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                            <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                            <div className={cn(
-                              "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-slate-100",
-                              alert.source === 'system' ? "text-blue-600 bg-blue-50" :
-                              alert.source === 'admin' ? "text-slate-600" : "text-emerald-600 bg-emerald-50"
-                            )}>
-                              {alert.source}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="absolute right-4 bottom-4 flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                        {!alert.is_read && (
-                          <button
-                            onClick={() => handleMarkAsRead(alert.id)}
-                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-100"
-                            title="Mark as read"
-                          >
-                            <Check size={14} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(alert.id)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="space-y-1">
+                               <div className="flex items-center gap-2">
+                                  <span className={cn(
+                                    "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                                    getSourceStyles(alert.source, alert.type)
+                                  )}>
+                                    {alert.source}
+                                  </span>
+                                  {!alert.is_read && (
+                                     <span className="flex h-2 w-2 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
+                                  )}
+                               </div>
+                               <p className={cn(
+                                 "text-sm font-bold leading-snug tracking-tight transition-colors",
+                                 alert.is_read ? "text-slate-500" : "text-slate-900"
+                               )}>
+                                 {alert.message}
+                               </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 mt-4">
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                              <Clock size={12} className="text-slate-300" />
+                              {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                            </div>
+
+                            {/* Action Buttons (Inline for mobile/desktop) */}
+                            <div className="ml-auto flex items-center gap-1">
+                              {!alert.is_read && (
+                                <button
+                                  onClick={() => handleMarkAsRead(alert.id)}
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-transparent hover:border-emerald-100 active:scale-90"
+                                  title="Acknowledge"
+                                >
+                                  <CheckCheck size={16} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDelete(alert.id)}
+                                className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-rose-100 active:scale-90"
+                                title="Dismiss"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -245,19 +288,24 @@ export function SystemAlerts() {
               )}
             </div>
 
+            {/* Bulk Actions Footer */}
             {alerts.length > 0 && (
-              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/80 grid grid-cols-2 gap-3 shrink-0">
+              <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 grid grid-cols-2 gap-4 shrink-0">
                 <button
                   onClick={handleMarkAllRead}
-                  className="flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm active:scale-95"
+                  disabled={unreadCount === 0}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 disabled:opacity-50",
+                    unreadCount > 0 ? "text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 hover:shadow-xl" : "text-slate-300 cursor-not-allowed"
+                  )}
                 >
-                  <CheckCheck size={14} /> Read All
+                  <CheckCheck size={16} /> Mark All Read
                 </button>
                 <button
                   onClick={handleClearAll}
-                  className="flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-sm active:scale-95"
+                  className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm hover:shadow-rose-100 active:scale-95"
                 >
-                  <Trash2 size={14} /> Clear All
+                  <Trash2 size={16} /> Clear Console
                 </button>
               </div>
             )}

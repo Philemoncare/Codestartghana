@@ -15,7 +15,13 @@ const config: Config = {
       },
       animation: {
         'bounce-slow': 'bounce 3s linear infinite',
-      }
+        'shimmer': 'shimmer 2.5s infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
     },
   },
   plugins: [tailwindAnimate],

@@ -8,16 +8,36 @@ import { LogOut, Menu, X, Home, BookOpen, Map, FolderKanban, FileText, Bell, Set
 import { studentService } from "@/services/studentService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AnnouncementBanner } from "../ui/AnnouncementBanner";
 
 export const StudentNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem("training_announcement_dismissed");
+    if (dismissed === "true") setBannerVisible(false);
+
+    const handleDismiss = () => setBannerVisible(false);
+    window.addEventListener("announcement_dismissed", handleDismiss);
+    return () => window.removeEventListener("announcement_dismissed", handleDismiss);
+  }, []);
 
   // Close sidebar on route change
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -46,7 +66,11 @@ export const StudentNavbar = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-[110] bg-white/90 backdrop-blur-xl border-b border-slate-100 h-16 md:h-20">
+      <AnnouncementBanner />
+      <nav className={cn(
+        "sticky top-0 z-[110] bg-white/90 backdrop-blur-xl border-b border-slate-100 h-16 md:h-20 transition-all duration-500",
+        (isScrolled || !bannerVisible) ? "mt-0" : "mt-20 md:mt-16"
+      )}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-4 md:gap-10">
             <Link href="/student/dashboard" className="flex items-center gap-2 group">

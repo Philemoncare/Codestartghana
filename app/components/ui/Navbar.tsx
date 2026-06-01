@@ -69,7 +69,7 @@ export const Navbar = () => {
           "fixed top-0 left-0 right-0 z-[100] transition-all duration-500 isolate",
           (isScrolled || !bannerVisible)
             ? "mt-0 bg-white/90 backdrop-blur-xl border-b border-slate-200/60 py-4 shadow-sm"
-            : "mt-20 sm:mt-16 md:mt-14 bg-transparent py-6 md:py-8"
+            : "mt-14 bg-transparent py-6 md:py-8"
         )}
       >
         <div className="max-w-7xl mx-auto px-6 sm:px-8 flex items-center justify-between">

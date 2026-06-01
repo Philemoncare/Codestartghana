@@ -68,8 +68,8 @@ export const StudentNavbar = () => {
     <>
       <AnnouncementBanner />
       <nav className={cn(
-        "sticky top-0 z-[110] bg-white/90 backdrop-blur-xl border-b border-slate-100 h-16 md:h-20 transition-all duration-500",
-        (isScrolled || !bannerVisible) ? "mt-0" : "mt-20 md:mt-16"
+        "fixed top-0 left-0 right-0 z-[110] bg-white/90 backdrop-blur-xl border-b border-slate-100 h-16 md:h-20 transition-all duration-500",
+        (isScrolled || !bannerVisible) ? "mt-0" : "mt-14"
       )}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-4 md:gap-10">

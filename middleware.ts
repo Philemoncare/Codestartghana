@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
 
   // 1. STUDENT PORTAL PROTECTION & REDIRECTION
   const isStudentPortalRoute = pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/profile');
-  const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/enroll';
+  const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/enroll' || pathname === '/forgot-password' || pathname === '/reset-password';
 
   // If logged in as a student
   if (studentSession) {
@@ -74,6 +74,8 @@ export const config = {
     '/login',
     '/register',
     '/enroll',
+    '/forgot-password',
+    '/reset-password',
     '/admin',
     '/admin/:path*',
     '/student/:path*'

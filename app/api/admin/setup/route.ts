@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyAdmin } from '@/lib/auth';
+import { createAlert } from '@/lib/alerts';
 
 export async function GET() {
   try {
@@ -17,6 +18,33 @@ export async function GET() {
       ADD COLUMN IF NOT EXISTS approval_email_sent BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS approval_email_sent_at TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS profile_photo_url TEXT
+    `);
+
+    // 2.5 Support for email reuse after rejection
+    // Remove ALL unique constraints on the email column to allow partial index to work
+    await query(`
+      DO $$
+      DECLARE
+          r record;
+      BEGIN
+          FOR r IN (
+              SELECT conname
+              FROM pg_constraint
+              WHERE conrelid = 'registrations'::regclass
+                AND contype = 'u'
+          ) LOOP
+              EXECUTE 'ALTER TABLE registrations DROP CONSTRAINT ' || quote_ident(r.conname);
+          END LOOP;
+      END $$;
+    `);
+
+    // Ensure we also drop any unique indexes that aren't constraints
+    await query(`DROP INDEX IF EXISTS registrations_email_key`);
+
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_registrations_active_email
+      ON registrations (email)
+      WHERE (status != 'rejected')
     `);
 
     // 3. Ensure payments table is correct
@@ -140,6 +168,64 @@ export async function GET() {
       )
     `);
 
+    // 13. NEW: System Settings (for things like Timetable Image)
+    await query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key VARCHAR(255) PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 14. NEW: Password Reset Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS student_password_resets (
+        id SERIAL PRIMARY KEY,
+        registration_id INTEGER REFERENCES registrations(id) ON DELETE CASCADE,
+        code VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 15. NEW: Activity Logs (for security auditing)
+    await query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id SERIAL PRIMARY KEY,
+        registration_id INTEGER REFERENCES registrations(id) ON DELETE CASCADE,
+        action VARCHAR(100) NOT NULL,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 16. NEW: System Alerts
+    await query(`
+      CREATE TABLE IF NOT EXISTS alerts (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('critical', 'warning', 'info')),
+        message TEXT NOT NULL,
+        source VARCHAR(50) NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 17. NEW: SMS Logs (Termii tracking)
+    await query(`
+      CREATE TABLE IF NOT EXISTS sms_logs (
+        id SERIAL PRIMARY KEY,
+        student_name VARCHAR(255),
+        phone_number VARCHAR(50) NOT NULL,
+        message_body TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'sent',
+        provider_response TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Check if timetable is empty and seed if necessary
     const timetableCheck = await query('SELECT COUNT(*) FROM timetable');
     if (parseInt(timetableCheck.rows[0].count) === 0) {
@@ -152,6 +238,8 @@ export async function GET() {
     }
 
     console.log('[SETUP] Migration successful.');
+
+    await createAlert('info', 'System routine action: Database migration and setup run successfully.', 'system');
 
     return NextResponse.json({
       success: true,

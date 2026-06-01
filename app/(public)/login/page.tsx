@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import Link from "next/link";
+import { notify } from "@/lib/notify";
 import { Mail, Loader2, ArrowRight, Lock, Eye, EyeOff } from "lucide-react";
 import { studentService } from "@/services/studentService";
 import Image from "next/image";
@@ -19,32 +20,17 @@ export default function LoginPage() {
     setLoading(true);
 
     if (!email.trim() || !password) {
-      toast.warning(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Missing Info</span>
-          <span className="text-slate-400 text-xs font-medium">Please enter both your email and password.</span>
-        </div>
-      );
+      notify.warning("Missing Info", "Please enter both your email and password.");
       setLoading(false);
       return;
     }
 
     try {
       await studentService.login(email.trim(), password);
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Login Successful</span>
-          <span className="text-slate-400 text-xs font-medium">Welcome back to your learning dashboard.</span>
-        </div>
-      );
+      notify.success("Login Successful", "Welcome back to your learning dashboard.");
       router.push("/student/dashboard");
     } catch (error: any) {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Login Failed</span>
-          <span className="text-slate-400 text-xs font-medium">We couldn't sign you in. Please check your email and password and try again.</span>
-        </div>
-      );
+      notify.error("Login Failed", "We couldn't sign you in. Please check your email and password and try again.");
     } finally {
       setLoading(false);
     }
@@ -105,6 +91,11 @@ export default function LoginPage() {
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
+              </div>
+              <div className="flex justify-end px-1">
+                 <Link href="/forgot-password" className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors">
+                    Forgot Password?
+                 </Link>
               </div>
             </div>
 

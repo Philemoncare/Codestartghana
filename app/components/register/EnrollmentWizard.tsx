@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { registerService } from "@/services/registerService";
 import { paymentService } from "@/services/paymentService";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import {
   Loader2,
   CheckCircle,
@@ -25,10 +25,27 @@ type Step = 1 | 2 | 3 | 4;
 
 export const EnrollmentWizard = () => {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [registrationId, setRegistrationId] = useState<number | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Safety timeout for loading state
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setTimeout(() => {
+        setLoading(false);
+        notify.error("Connection Slow", "The request is taking longer than expected. Please check your connection.");
+      }, 30000); // 30 second safety limit
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // Master Form State
   const [formData, setFormData] = useState({
@@ -42,8 +59,53 @@ export const EnrollmentWizard = () => {
     motivation: ""
   });
 
+  // Persist State to Session Storage to prevent loss on refresh
+  useEffect(() => {
+    const savedData = sessionStorage.getItem('enrollment_form');
+    const savedStep = sessionStorage.getItem('enrollment_step');
+    const savedRegId = sessionStorage.getItem('enrollment_reg_id');
+
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setFormData(prev => ({ ...prev, ...parsed, password: "" })); // Don't persist password
+      } catch (e) {}
+    }
+    if (savedStep) setStep(parseInt(savedStep) as Step);
+    if (savedRegId) setRegistrationId(parseInt(savedRegId));
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('enrollment_form', JSON.stringify({ ...formData, password: "" }));
+    sessionStorage.setItem('enrollment_step', step.toString());
+    if (registrationId) sessionStorage.setItem('enrollment_reg_id', registrationId.toString());
+  }, [formData, step, registrationId]);
+
+  const clearSession = () => {
+    sessionStorage.removeItem('enrollment_form');
+    sessionStorage.removeItem('enrollment_step');
+    sessionStorage.removeItem('enrollment_reg_id');
+    window.location.reload();
+  };
+
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [motivationCount, setMotivationCount] = useState(0);
+  const [honeypot, setHoneypot] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [paymentData, setPaymentData] = useState({
+    senderNumber: "",
+    transactionId: ""
+  });
+
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  if (!isMounted) return (
+     <div className="bg-white border border-slate-200 rounded-[2.5rem] p-12 shadow-premium animate-pulse flex items-center justify-center min-h-[400px]">
+        <Loader2 className="animate-spin text-slate-200" size={40} />
+     </div>
+  );
 
   const calculatePasswordStrength = (pass: string) => {
     let strength = 0;
@@ -54,9 +116,6 @@ export const EnrollmentWizard = () => {
     if (/[^A-Za-z0-9]/.test(pass)) strength++;
     return strength;
   };
-
-  const [honeypot, setHoneypot] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateEmail = (email: string) => {
     return String(email)
@@ -69,14 +128,6 @@ export const EnrollmentWizard = () => {
   const validateWhatsApp = (num: string) => {
     return /^[0-9]{10,15}$/.test(num.replace(/\s/g, ''));
   };
-
-  const [paymentData, setPaymentData] = useState({
-    senderNumber: "",
-    transactionId: ""
-  });
-
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
 
   // Handle Input Changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -100,11 +151,11 @@ export const EnrollmentWizard = () => {
     const selected = e.target.files?.[0] || null;
     if (selected) {
       if (!selected.type.startsWith('image/')) {
-        toast.error("Please upload an image file.");
+        notify.error("Invalid Format", "Please upload a valid image file.");
         return;
       }
-      if (selected.size > 5 * 1024 * 1024) {
-        toast.error("File size limit is 5MB.");
+      if (selected.size > 2 * 1024 * 1024) {
+        notify.warning("File Too Large", "Screenshots must be under 2MB.");
         return;
       }
       setFile(selected);
@@ -115,11 +166,18 @@ export const EnrollmentWizard = () => {
   };
 
   // Step Transitions
-  const nextStep = () => setStep(prev => (prev < 4 ? (prev + 1) as Step : prev));
-  const prevStep = () => setStep(prev => (prev > 1 ? (prev - 1) as Step : prev));
+  const nextStep = () => {
+    setStep(prev => (prev < 4 ? (prev + 1) as Step : prev));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const prevStep = () => {
+    setStep(prev => (prev > 1 ? (prev - 1) as Step : prev));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleIdentitySubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (honeypot) return; // Anti-spam
 
     const newErrors: Record<string, string> = {};
@@ -133,12 +191,7 @@ export const EnrollmentWizard = () => {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.warning(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Validation Error</span>
-          <span className="text-slate-400 text-xs font-medium">Please correct the highlighted fields to proceed.</span>
-        </div>
-      );
+      notify.warning("Validation Error", "Please correct the highlighted fields to proceed.");
       return;
     }
 
@@ -148,49 +201,38 @@ export const EnrollmentWizard = () => {
 
   const handleLearningSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (honeypot) return;
 
     if (!formData.motivation.trim() || formData.motivation.length < 20) {
       setErrors({ motivation: "Please share more about your motivation (min 20 chars)." });
-      toast.warning(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Insufficient Motivation</span>
-          <span className="text-slate-400 text-xs font-medium">Please provide a more detailed answer about your goals (min 20 chars).</span>
-        </div>
-      );
+      notify.warning("Insufficient Motivation", "Please provide a more detailed answer about your goals (min 20 chars).");
       return;
     }
 
     setErrors({});
     setLoading(true);
-    const loadingToast = toast.loading(
-      <div className="flex flex-col gap-1">
-        <span className="font-black text-white text-sm tracking-tight">Securing Data</span>
-        <span className="text-slate-400 text-xs font-medium animate-pulse">Your technical profile is being encrypted...</span>
-      </div>
-    );
+    const loadingToast = notify.loading("Your technical profile is being encrypted...");
     try {
       const result = await registerService.register(formData);
       setRegistrationId(result.id);
       nextStep();
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Information Synchronized</span>
-          <span className="text-slate-400 text-xs font-medium">Your learning profile has been recorded successfully.</span>
-        </div>,
-        { id: loadingToast }
-      );
+      notify.success("Information Synchronized", "Your learning profile has been recorded successfully.");
+      notify.dismiss(loadingToast);
     } catch (error: any) {
       console.error("Registration Error:", error);
-      const errorMessage = error.message || (typeof error === 'string' ? error : "An error occurred while saving your data. Please try again.");
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Synchronization Failed</span>
-          <span className="text-slate-400 text-xs font-medium">{errorMessage}</span>
-          {error.details && <span className="text-[10px] text-slate-500 font-mono mt-1 opacity-70">{error.details}</span>}
-        </div>,
-        { id: loadingToast }
-      );
+
+      // Handle "Email already registered"
+      // Note: The system now allows re-registration if the previous attempt was 'rejected'
+      if (error.message?.includes('already registered')) {
+         notify.error("Active Account Found", "An application with this email is already in progress or approved.");
+         notify.dismiss(loadingToast);
+         return;
+      }
+
+      const errorMessage = error.message || (typeof error === 'string' ? error : "An error occurred while saving your data.");
+      notify.error("Synchronization Failed", errorMessage);
+      notify.dismiss(loadingToast);
     } finally {
       setLoading(false);
     }
@@ -198,29 +240,16 @@ export const EnrollmentWizard = () => {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registrationId) return toast.error(
-      <div className="flex flex-col gap-1">
-        <span className="font-black text-white text-sm tracking-tight">Session Expired</span>
-        <span className="text-slate-400 text-xs font-medium">Please restart the enrollment process.</span>
-      </div>
-    );
+    if (loading) return;
+    if (!registrationId) return notify.error("Session Expired", "Please restart the enrollment process.");
+
     if (!paymentData.senderNumber || !paymentData.transactionId || !file) {
-      toast.warning(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Incomplete Payment Info</span>
-          <span className="text-slate-400 text-xs font-medium">MoMo number, Ref ID, and screenshot are required.</span>
-        </div>
-      );
+      notify.warning("Incomplete Info", "MoMo number, Ref ID, and screenshot are required.");
       return;
     }
 
     setLoading(true);
-    const loadingToast = toast.loading(
-      <div className="flex flex-col gap-1">
-        <span className="font-black text-white text-sm tracking-tight">Verifying Payment</span>
-        <span className="text-slate-400 text-xs font-medium animate-pulse">Cross-referencing transaction records...</span>
-      </div>
-    );
+    const loadingToast = notify.loading("Verifying transaction records...");
     try {
       await paymentService.submitPayment({
         registrationId: registrationId.toString(),
@@ -230,21 +259,11 @@ export const EnrollmentWizard = () => {
         file
       });
       nextStep();
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Enrollment Finalized</span>
-          <span className="text-slate-400 text-xs font-medium">Welcome to CodeStart. Your journey begins soon.</span>
-        </div>,
-        { id: loadingToast, duration: 10000 }
-      );
+      notify.success("Enrollment Finalized", "Welcome to CodeStart. Your journey begins soon.");
+      notify.dismiss(loadingToast);
     } catch (error: any) {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Payment Verification Failed</span>
-          <span className="text-slate-400 text-xs font-medium">We couldn't verify your transaction. Check details and retry.</span>
-        </div>,
-        { id: loadingToast }
-      );
+      notify.error("Payment Verification Failed", error.message || "We couldn't verify your transaction.");
+      notify.dismiss(loadingToast);
     } finally {
       setLoading(false);
     }
@@ -267,6 +286,14 @@ export const EnrollmentWizard = () => {
         "bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2.5rem] p-5 md:p-12 shadow-premium transition-all duration-500 min-h-[400px] relative overflow-hidden",
         loading && "opacity-60 pointer-events-none"
       )}>
+        {loading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-[2px]">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="animate-spin text-blue-600" size={40} />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Processing Request...</p>
+            </div>
+          </div>
+        )}
         {step === 1 && (
           <form key="step1" onSubmit={handleIdentitySubmit} className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
             <div className="space-y-1.5 sm:space-y-2">
@@ -475,9 +502,20 @@ export const EnrollmentWizard = () => {
       </div>
 
       {/* Security Badge */}
-      <div className="flex items-center justify-center gap-2 text-slate-400">
-         <ShieldCheck size={16} />
-         <span className="text-[10px] font-bold uppercase tracking-widest">End-to-End Encrypted Enrollment</span>
+      <div className="flex flex-col items-center gap-4">
+         <div className="flex items-center justify-center gap-2 text-slate-400">
+            <ShieldCheck size={16} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">End-to-End Encrypted Enrollment</span>
+         </div>
+
+         {step > 1 && step < 4 && (
+            <button
+               onClick={clearSession}
+               className="text-[10px] font-bold uppercase tracking-widest text-slate-300 hover:text-rose-500 transition-colors"
+            >
+               Reset & Start Over
+            </button>
+         )}
       </div>
     </div>
   );

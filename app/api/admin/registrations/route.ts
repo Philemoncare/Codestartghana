@@ -18,3 +18,23 @@ export async function GET() {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    await verifyAdmin();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    // Hard delete the registration record (cascade will handle payments/attendance if configured)
+    await query('DELETE FROM registrations WHERE id = $1', [id]);
+
+    return NextResponse.json({ success: true, message: 'Registration record permanently deleted.' });
+  } catch (error: any) {
+    console.error('DELETE REGISTRATION ERROR:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

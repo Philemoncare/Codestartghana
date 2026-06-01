@@ -21,6 +21,12 @@ export const adminService = {
     });
   },
 
+  async deleteRegistration(id: number) {
+    return apiFetch(`/api/admin/registrations?id=${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   async resendWelcomeEmail(registrationId: number) {
     return apiFetch('/api/admin/resend-welcome', {
       method: 'POST',
@@ -71,6 +77,18 @@ export const adminService = {
   async removeAttendance(id: number) {
     return apiFetch(`/api/admin/attendance?id=${id}`, {
       method: 'DELETE',
+    });
+  },
+
+  async getSetting(key: string) {
+    return apiFetch(`/api/admin/settings?key=${key}`);
+  },
+
+  async updateSetting(key: string, value: string) {
+    return apiFetch('/api/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value }),
     });
   }
 };

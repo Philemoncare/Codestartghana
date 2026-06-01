@@ -9,34 +9,46 @@ import {
   LogOut, Calendar, Bell, CheckCircle2,
   Clock, User, Download, Play, ShieldCheck,
   ChevronRight, ExternalLink, Zap, Award,
-  BookOpen, FolderKanban, History, Mail, Phone
+  BookOpen, FolderKanban, History, Mail, Phone, School
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function StudentDashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [timetableImage, setTimetableImage] = useState<string | null>(null);
   const router = useRouter();
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
+      // Fetch dashboard data
       const result = await studentService.getDashboardData();
       setData(result);
-    } catch (error: any) {
-      console.error("Dashboard Fetch Error:", error);
-      if (error.status === 403) {
-        toast.error(
-          <div className="flex flex-col gap-1">
-            <span className="font-black text-white text-sm tracking-tight">Access Restricted</span>
-            <span className="text-slate-400 text-xs font-medium">Your account is awaiting approval from the administration team.</span>
-          </div>
-        );
-        router.push("/login");
-      } else {
-        toast.error("We couldn't sync your profile data. Please try again in a moment.");
+
+      // Fetch settings separately so it doesn't block the main data
+      try {
+        const settingsRes = await fetch('/api/admin/settings?key=timetable_image');
+        if (settingsRes.ok) {
+           const settings = await settingsRes.json();
+           if (settings && settings.value) {
+             setTimetableImage(settings.value);
+           }
+        }
+      } catch (e) {
+        console.warn("Non-critical: Failed to fetch timetable image", e);
+      }
+    } catch (err: any) {
+      console.error("Dashboard Fetch Error:", err);
+      setError(err.message || "Failed to load dashboard");
+
+      if (err.status === 403 || err.status === 401) {
+        notify.error("Session Expired", "Please log in again to continue.");
         router.push("/login");
       }
     } finally {
@@ -49,21 +61,6 @@ export default function StudentDashboardPage() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000 * 60);
     return () => clearInterval(timer);
   }, [fetchData]);
-
-  const handleLogout = async () => {
-    try {
-      await studentService.logout();
-      router.push("/");
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Logout Successful</span>
-          <span className="text-slate-400 text-xs font-medium">See you again soon! 👋</span>
-        </div>
-      );
-    } catch (e) {
-      router.push("/");
-    }
-  };
 
   // 1. Destructure data safely with defaults at the top level
   const {
@@ -92,10 +89,12 @@ export default function StudentDashboardPage() {
     const currentDay = dayNames[currentTime.getDay()];
 
     return schedule.find((session: any) => {
+      if (!session.time || !session.time.includes("-")) return false;
       if (session.day !== currentDay) return false;
 
       try {
-        const [startPart] = session.time.split("-").map((t: string) => t.trim());
+        const parts = session.time.split("-");
+        const startPart = parts[0].trim();
         const [time, ampm] = startPart.split(" ");
         let [hours, minutes] = time.split(":").map(Number);
         if (isNaN(minutes)) minutes = 0;
@@ -118,53 +117,70 @@ export default function StudentDashboardPage() {
 
   const firstName = student?.fullName ? student.fullName.split(' ')[0] : 'Student';
 
-  // 3. Early return for loading state (Hooks are already declared)
-  if (loading || !data) {
+  // 3. Handle Loading State
+  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8 flex flex-col items-center">
-         <div className="max-w-6xl mx-auto w-full space-y-8 mt-12">
-            <div className="flex justify-between items-center">
-                <Skeleton className="h-12 w-48 rounded-2xl" />
-                <Skeleton className="h-10 w-32 rounded-xl" />
+      <div className="max-w-6xl mx-auto px-6 mt-12 space-y-10">
+         <section className="bg-white border border-slate-200 rounded-[2.5rem] p-12 shadow-sm">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+               <Skeleton className="w-32 h-32 rounded-[2rem]" />
+               <div className="space-y-4 flex-1">
+                  <Skeleton className="h-4 w-32 rounded-full" />
+                  <Skeleton className="h-12 w-64 rounded-xl" />
+                  <Skeleton className="h-4 w-96 rounded-full" />
+               </div>
             </div>
-            <Skeleton className="h-64 rounded-[2.5rem]" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-               <Skeleton className="h-96 lg:col-span-2 rounded-[2.5rem]" />
+         </section>
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 space-y-10">
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Skeleton className="h-32 rounded-[2rem]" />
+                  <Skeleton className="h-32 rounded-[2rem]" />
+                  <Skeleton className="h-32 rounded-[2rem]" />
+                  <Skeleton className="h-32 rounded-[2rem]" />
+               </div>
                <Skeleton className="h-96 rounded-[2.5rem]" />
+            </div>
+            <div className="space-y-10">
+               <Skeleton className="h-64 rounded-[2.5rem]" />
+               <Skeleton className="h-64 rounded-[2.5rem]" />
             </div>
          </div>
       </div>
     );
   }
 
+  // 4. Handle Error or Missing Data State
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+         <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mb-6 border border-rose-100 shadow-sm">
+            <Bell size={40} className="animate-bounce" />
+         </div>
+         <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase mb-2">Sync Error</h1>
+         <p className="text-slate-500 font-medium max-w-md mb-8">
+           We encountered a problem while retrieving your engineering profile. This usually happens during database maintenance.
+         </p>
+         <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={() => fetchData()}
+              className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
+            >
+               Retry Synchronization
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-8 py-4 bg-white text-slate-600 border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+            >
+               Sign Out
+            </button>
+         </div>
+      </div>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-[#FBFBFE] pb-24">
-      <nav className="sticky top-0 z-[60] bg-white/90 backdrop-blur-xl border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-10">
-            <div className="flex items-center gap-2">
-              <div className="relative w-8 h-8">
-                <Image src="/images/faicom.png" alt="Logo" fill className="object-contain" />
-              </div>
-              <span className="font-black text-lg tracking-tighter text-slate-900 uppercase">CodeStart</span>
-            </div>
-
-            <div className="hidden lg:flex items-center gap-8">
-               <NavLink href="/student/dashboard" active>Learning Space</NavLink>
-               <NavLink href="/student/profile">Account Settings</NavLink>
-               <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-not-allowed">Archives</button>
-            </div>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all border border-slate-100"
-          >
-            <LogOut size={14} /> Logout
-          </button>
-        </div>
-      </nav>
-
+    <main className="pb-24">
       <div className="max-w-6xl mx-auto px-6 mt-12 space-y-10 animate-in fade-in duration-700">
 
         <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-12 shadow-sm overflow-hidden relative">
@@ -172,9 +188,19 @@ export default function StudentDashboardPage() {
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative z-10">
             <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
-               <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-[2rem] bg-slate-900 flex items-center justify-center text-white overflow-hidden shadow-xl">
-                  <User size={48} className="opacity-20 absolute" />
-                  <span className="text-4xl font-black relative z-10">{student.fullName?.charAt(0) || 'S'}</span>
+               <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-[2rem] bg-slate-900 flex items-center justify-center text-white overflow-hidden shadow-xl shrink-0">
+                  {(student.profile_photo_url || student.profilePhotoUrl) ? (
+                    <img
+                      src={student.profile_photo_url || student.profilePhotoUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      <User size={48} className="opacity-20 absolute" />
+                      <span className="text-4xl font-black relative z-10">{student.fullName?.charAt(0) || student.full_name?.charAt(0) || 'S'}</span>
+                    </>
+                  )}
                </div>
 
                <div className="space-y-3">
@@ -187,6 +213,7 @@ export default function StudentDashboardPage() {
                  </h1>
                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-slate-500 font-bold text-xs uppercase tracking-widest">
                     <span className="flex items-center gap-2"><Mail size={14} /> {student.email}</span>
+                    <span className="flex items-center gap-2"><School size={14} /> {student.school || 'N/A'}</span>
                     <span className="flex items-center gap-2"><Zap size={14} /> {student.experience}</span>
                     <span className="flex items-center gap-2"><Clock size={14} /> ID: #CS-2026-{student.id?.toString().padStart(4, '0') || '0000'}</span>
                  </div>
@@ -312,6 +339,25 @@ export default function StudentDashboardPage() {
                   </div>
                </section>
 
+               {timetableImage && (
+                  <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                     <div className="p-8 border-b border-slate-50">
+                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                           <Calendar size={20} className="text-blue-600" /> Weekly Schedule Graphic
+                        </h3>
+                     </div>
+                     <div className="p-4 md:p-8 bg-slate-50">
+                        <div className="bg-white p-2 rounded-3xl border border-slate-200 shadow-inner overflow-hidden">
+                           <img
+                             src={timetableImage}
+                             alt="Weekly Timetable"
+                             className="w-full h-auto rounded-2xl"
+                           />
+                        </div>
+                     </div>
+                  </section>
+               )}
+
                <section className="space-y-6">
                   <div className="flex items-center justify-between px-2">
                     <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Engineering Portfolio</h3>
@@ -418,20 +464,6 @@ export default function StudentDashboardPage() {
         )}
       </div>
     </main>
-  );
-}
-
-function NavLink({ href, children, active = false }: any) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "text-[10px] font-black uppercase tracking-widest transition-colors",
-        active ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
-      )}
-    >
-      {children}
-    </Link>
   );
 }
 

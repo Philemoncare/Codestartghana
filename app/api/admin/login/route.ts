@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { sendVerificationEmail } from '@/lib/mail';
+import { createAlert } from '@/lib/alerts';
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
 
     if (!res || (res.rowCount ?? 0) === 0) {
       // Security: Use same error message for non-existent user to prevent enumeration
+      await createAlert('critical', `Unauthorized access attempt: Username '${email}' not found.`, 'system');
       return NextResponse.json({ error: 'Access Denied: Invalid credentials' }, { status: 401 });
     }
 
@@ -23,6 +25,7 @@ export async function POST(req: Request) {
     const isMatch = await bcrypt.compare(password, admin.password_hash);
 
     if (!isMatch) {
+      await createAlert('critical', `Failed login attempt for admin: ${admin.username}`, 'system');
       return NextResponse.json({ error: 'Access Denied: Invalid credentials' }, { status: 401 });
     }
 

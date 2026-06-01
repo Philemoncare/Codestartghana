@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { sendRegistrationReceivedEmail } from '@/lib/mail';
+import { sendRegistrationReceivedEmail, sendDetailedOnboardingEmail } from '@/lib/mail';
+import { sendRegistrationConfirmationSMS } from '@/lib/sms';
 import bcrypt from 'bcryptjs';
+import { createAlert } from '@/lib/alerts';
 
 export async function POST(req: Request) {
   try {
@@ -24,6 +26,22 @@ export async function POST(req: Request) {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 2.6 Check for active registration (Pending or Approved)
+    // This allows re-application if previous attempts were 'rejected'
+    const activeCheck = await query(
+      "SELECT id, status FROM registrations WHERE email = $1 AND status != 'rejected' LIMIT 1",
+      [normalizedEmail]
+    );
+
+    if ((activeCheck.rowCount ?? 0) > 0) {
+      return NextResponse.json({
+        error: 'This email address is already registered.',
+        details: 'An active application already exists for this email.'
+      }, { status: 400 });
+    }
+
     // 3. Database Insertion
     let res;
     try {
@@ -33,7 +51,7 @@ export async function POST(req: Request) {
          RETURNING *`,
         [
           fullName.trim(),
-          email.toLowerCase().trim(),
+          normalizedEmail,
           passwordHash,
           whatsapp.trim(),
           age ? parseInt(age.toString()) : null,
@@ -62,12 +80,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to create registration record in database.' }, { status: 500 });
     }
 
-    // 3.5 Send Registration Received Email (Non-blocking)
-    sendRegistrationReceivedEmail(email.toLowerCase().trim(), fullName.trim())
-      .catch(err => console.error('Failed to send registration email:', err));
+    await createAlert('warning', `New student registration: ${fullName.trim()} (${normalizedEmail})`, 'student');
+
+    // 3.5 Trigger Communications (Non-blocking)
+    const studentData = res.rows[0];
+
+    // 1. Send SMS
+    sendRegistrationConfirmationSMS(whatsapp.trim(), fullName.trim())
+      .catch(err => console.error('Failed to send registration SMS:', err));
+
+    // 2. Send Detailed Onboarding Email
+    sendDetailedOnboardingEmail(normalizedEmail, studentData)
+      .catch(err => console.error('Failed to send detailed onboarding email:', err));
 
     // 4. Return Success JSON
-    return NextResponse.json(res.rows[0]);
+    return NextResponse.json(studentData);
 
   } catch (error: any) {
     console.error('CRITICAL REGISTRATION API ERROR:', error);

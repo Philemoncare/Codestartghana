@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { Lock, Mail, Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import Image from "next/image";
@@ -28,29 +28,14 @@ export default function AdminLoginPage() {
       });
 
       if (res.requiresVerification) {
-        toast.success(
-          <div className="flex flex-col gap-1">
-            <span className="font-black text-white text-sm tracking-tight">Security Code Sent</span>
-            <span className="text-slate-400 text-xs font-medium">Please verify your identity with the key sent to your email.</span>
-          </div>
-        );
+        notify.success("Security Code Sent", "Please verify your identity with the key sent to your email.");
         router.push(`/admin/verify?email=${encodeURIComponent(email)}`);
       } else {
-        toast.success(
-          <div className="flex flex-col gap-1">
-            <span className="font-black text-white text-sm tracking-tight">Access Granted</span>
-            <span className="text-slate-400 text-xs font-medium">Welcome back to the CodeStart Command Center.</span>
-          </div>
-        );
+        notify.success("Access Granted", "Welcome back to the CodeStart Command Center.");
         router.push("/admin/dashboard");
       }
     } catch (error: any) {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Authentication Denied</span>
-          <span className="text-slate-400 text-xs font-medium">{error.message || "Invalid administrative credentials provided."}</span>
-        </div>
-      );
+      notify.error("Authentication Denied", error.message || "Invalid administrative credentials provided.");
     } finally {
       setLoading(false);
     }

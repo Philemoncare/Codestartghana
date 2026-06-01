@@ -1,7 +1,16 @@
 export async function apiFetch(url: string, options: RequestInit = {}) {
+  // Disable caching for all API calls to ensure data freshness
+  const fetchOptions: RequestInit = {
+    ...options,
+    cache: 'no-store',
+    headers: {
+      ...options.headers,
+    }
+  };
+
   let response: Response;
   try {
-    response = await fetch(url, options);
+    response = await fetch(url, fetchOptions);
   } catch (networkError: any) {
     console.error("Network error during fetch:", url, networkError);
     throw new Error("Connection failed. Please check your internet and try again.");

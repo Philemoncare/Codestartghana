@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { query } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Helper to safely query a table and return default if it doesn't exist
  */
@@ -28,7 +30,11 @@ export async function GET() {
 
   try {
     // 1. Get student basic info - Registry table is mandatory
-    const res = await query('SELECT * FROM registrations WHERE email = $1', [studentEmail]);
+    // Use ORDER BY created_at DESC, id DESC to ensure we get the latest application if multiple exist
+    const res = await query(
+      'SELECT * FROM registrations WHERE email = $1 ORDER BY created_at DESC, id DESC LIMIT 1',
+      [studentEmail]
+    );
 
     if (!res || res.rowCount === 0) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
@@ -57,9 +63,14 @@ export async function GET() {
       student: {
         id: regId,
         fullName: student.full_name,
+        full_name: student.full_name,
         email: student.email,
+        whatsapp: student.whatsapp,
+        school: student.school,
         experience: student.experience,
         status: student.status,
+        profile_photo_url: student.profile_photo_url,
+        profilePhotoUrl: student.profile_photo_url,
         paymentStatus: paymentInfo.payment_status || 'pending',
         transactionId: paymentInfo.transaction_id,
         registrationDate: student.created_at

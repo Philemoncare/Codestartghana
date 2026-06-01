@@ -63,10 +63,15 @@ export async function PATCH(req: Request) {
         console.error('[APPROVAL] Secondary process error:', innerError);
       }
     } else if (status === 'rejected' && payment.registration_id) {
+        // If payment/application is rejected, update registration and clean up
         await query(
           'UPDATE registrations SET status = $1 WHERE id = $2',
-          ['pending', payment.registration_id]
+          ['rejected', payment.registration_id]
         );
+
+        // Remove from active lists (Attendance and Progress)
+        await query('DELETE FROM attendance WHERE registration_id = $1', [payment.registration_id]);
+        await query('DELETE FROM student_progress WHERE registration_id = $1', [payment.registration_id]);
     }
 
     return NextResponse.json({ ...payment, emailSent: status === 'approved' });

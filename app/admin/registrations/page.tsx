@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { adminService } from "@/services/adminService";
-import { Mail, Smartphone, Search, GraduationCap, Check, X, ShieldCheck, Clock } from "lucide-react";
-import { toast } from "sonner";
+import { Mail, Smartphone, Search, GraduationCap, Check, X, ShieldCheck, Clock, RefreshCw, Trash2, AlertCircle } from "lucide-react";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
 export default function RegistrationsPage() {
   const [registrations, setRegistrations] = useState<any[]>([]);
@@ -17,6 +18,8 @@ export default function RegistrationsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedTimetableId, setSelectedTimetableId] = useState<string>("");
+  const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -27,7 +30,7 @@ export default function RegistrationsPage() {
       setRegistrations(Array.isArray(regData) ? regData : []);
       setTimetable(Array.isArray(timetableData) ? timetableData : []);
     } catch (error: any) {
-      toast.error("Failed to load registrations or timetable");
+      notify.error("Data Sync Failed", "Failed to load registrations or timetable");
       setRegistrations([]);
     } finally {
       setLoading(false);
@@ -39,12 +42,7 @@ export default function RegistrationsPage() {
   }, []);
 
   const handleManualStatusUpdate = async (regId: number, status: string) => {
-    const tid = toast.loading(
-      <div className="flex flex-col gap-1">
-        <span className="font-black text-white text-sm tracking-tight">Processing Request</span>
-        <span className="text-slate-400 text-xs font-medium animate-pulse">Updating student record...</span>
-      </div>
-    );
+    const tid = notify.loading("Updating student record...");
     try {
       await apiFetch('/api/admin/student-status', {
         method: 'PATCH',
@@ -52,39 +50,67 @@ export default function RegistrationsPage() {
         body: JSON.stringify({ id: regId, status }),
       });
 
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Status Modified</span>
-          <span className="text-slate-400 text-xs font-medium">The student is now {status}.</span>
-        </div>,
-        { id: tid }
-      );
+      notify.success("Status Modified", `The student is now ${status}.`);
       fetchData();
     } catch (error: any) {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Operation Failed</span>
-          <span className="text-slate-400 text-xs font-medium">Unable to update account status.</span>
-        </div>,
-        { id: tid }
-      );
+      notify.error("Operation Failed", "Unable to update account status.");
+    } finally {
+      notify.dismiss(tid);
     }
   };
 
   const handleMarkAttendance = async (regId: number) => {
     if (!selectedTimetableId) {
-      return toast.error("Select a timetable session first");
+      return notify.error("Session Missing", "Select a timetable session first");
     }
 
-    const tid = toast.loading("Marking attendance...");
+    const tid = notify.loading("Marking attendance...");
     try {
       await adminService.markAttendance({
         registrationId: regId,
         timetableId: parseInt(selectedTimetableId)
       });
-      toast.success("Attendance verified!", { id: tid });
+      notify.success("Attendance verified!");
     } catch (error: any) {
-      toast.error(error.message || "Failed to mark attendance", { id: tid });
+      notify.error("Verification Failed", error.message || "Failed to mark attendance");
+    } finally {
+      notify.dismiss(tid);
+    }
+  };
+
+  const handleDeleteRegistration = async (id: number) => {
+    if (!confirm("Are you sure you want to permanently delete this registration record? This action cannot be undone.")) return;
+
+    const tid = notify.loading("Removing from persistent storage...");
+    try {
+      await adminService.deleteRegistration(id);
+      notify.success("Record Erased", "Registration data has been permanently removed.");
+      fetchData();
+    } catch (error: any) {
+      notify.error("Deletion Failed", "Unable to erase record from database.");
+    } finally {
+      notify.dismiss(tid);
+    }
+  };
+
+  const handleFullCleanup = async () => {
+    setIsCleaning(true);
+    const tid = notify.loading("Wiping system registry...");
+    try {
+      const res = await fetch('/api/admin/data', { method: 'POST' });
+      const result = await res.json();
+      if (result.success) {
+        notify.success("Database Wiped", "All student records cleared.");
+        setIsCleanupModalOpen(false);
+        fetchData();
+      } else {
+        notify.error("Cleanup Halted", result.error);
+      }
+    } catch (e: any) {
+      notify.error("Network Fault", "Unable to connect to the main node.");
+    } finally {
+      setIsCleaning(false);
+      notify.dismiss(tid);
     }
   };
 
@@ -110,14 +136,33 @@ export default function RegistrationsPage() {
 
   return (
     <div className="space-y-6 md:space-y-10">
+      <ConfirmationModal
+        isOpen={isCleanupModalOpen}
+        onClose={() => setIsCleanupModalOpen(false)}
+        onConfirm={handleFullCleanup}
+        isLoading={isCleaning}
+        title="Critical System Purge"
+        description="This action will permanently delete all registration and payment data from the system. This cannot be undone and will affect all students. Are you absolutely certain?"
+        confirmText="Yes, Purge Everything"
+        variant="danger"
+      />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Student Registry</h1>
           <p className="text-slate-500 font-medium">Manage all cohort applications and profiles.</p>
         </div>
-        <div className="bg-white border border-slate-200 px-6 py-3 rounded-2xl shadow-sm hidden sm:block">
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Applicants</p>
-           <p className="text-2xl font-black text-slate-900">{loading ? "..." : registrations.length}</p>
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <button
+            onClick={() => setIsCleanupModalOpen(true)}
+            className="px-6 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-sm"
+          >
+            Clear All Data
+          </button>
+          <div className="bg-white border border-slate-200 px-6 py-3 rounded-2xl shadow-sm hidden sm:block">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Applicants</p>
+             <p className="text-2xl font-black text-slate-900">{loading ? "..." : registrations.length}</p>
+          </div>
         </div>
       </div>
 
@@ -255,28 +300,45 @@ export default function RegistrationsPage() {
                     <td className="px-8 py-6 text-right">
                        <div className="flex justify-end items-center gap-2">
                           <button
-                            onClick={() => handleMarkAttendance(reg.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 border border-blue-100 rounded-lg transition-all"
-                            title="Mark Attendance"
+                            onClick={() => handleDeleteRegistration(reg.id)}
+                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-lg transition-all"
+                            title="Delete Permanently"
                           >
-                             <ShieldCheck size={18} />
+                             <Trash2 size={18} />
                           </button>
-                          {reg?.status !== 'approved' && (
+                          {reg?.status !== 'rejected' ? (
+                            <>
+                              <button
+                                onClick={() => handleMarkAttendance(reg.id)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 border border-blue-100 rounded-lg transition-all"
+                                title="Mark Attendance"
+                              >
+                                 <ShieldCheck size={18} />
+                              </button>
+                              {reg?.status !== 'approved' && (
+                                <button
+                                  onClick={() => handleManualStatusUpdate(reg.id, 'approved')}
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 border border-emerald-100 rounded-lg transition-all"
+                                  title="Approve Account"
+                                >
+                                   <Check size={18} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleManualStatusUpdate(reg.id, 'rejected')}
+                                className="p-2 text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-lg transition-all"
+                                title="Reject Account"
+                              >
+                                 <X size={18} />
+                              </button>
+                            </>
+                          ) : (
                             <button
-                              onClick={() => handleManualStatusUpdate(reg.id, 'approved')}
-                              className="p-2 text-emerald-600 hover:bg-emerald-50 border border-emerald-100 rounded-lg transition-all"
-                              title="Approve Account"
+                              onClick={() => handleManualStatusUpdate(reg.id, 'pending')}
+                              className="p-2 text-blue-600 hover:bg-blue-50 border border-blue-100 rounded-lg transition-all"
+                              title="Restore to Pending"
                             >
-                               <Check size={18} />
-                            </button>
-                          )}
-                          {reg?.status !== 'rejected' && (
-                            <button
-                              onClick={() => handleManualStatusUpdate(reg.id, 'rejected')}
-                              className="p-2 text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-lg transition-all"
-                              title="Reject Account"
-                            >
-                               <X size={18} />
+                               <RefreshCw size={18} />
                             </button>
                           )}
                        </div>
@@ -345,25 +407,41 @@ export default function RegistrationsPage() {
 
                 <div className="flex items-center gap-2 pt-2">
                    <button
-                     onClick={() => handleMarkAttendance(reg?.id)}
-                     className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-100"
+                     onClick={() => handleDeleteRegistration(reg?.id)}
+                     className="p-3 bg-slate-50 text-slate-400 rounded-xl border border-slate-100"
                    >
-                     Attend
+                      <Trash2 size={18} />
                    </button>
-                   <button
-                     onClick={() => handleManualStatusUpdate(reg?.id, 'approved')}
-                     disabled={reg?.status === 'approved'}
-                     className="flex-1 py-3 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-black uppercase tracking-widest border border-emerald-100 disabled:opacity-30"
-                   >
-                     Approve
-                   </button>
-                   <button
-                     onClick={() => handleManualStatusUpdate(reg?.id, 'rejected')}
-                     disabled={reg?.status === 'rejected'}
-                     className="flex-1 py-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-black uppercase tracking-widest border border-rose-100 disabled:opacity-30"
-                   >
-                     Reject
-                   </button>
+                   {reg?.status !== 'rejected' ? (
+                     <>
+                        <button
+                          onClick={() => handleMarkAttendance(reg?.id)}
+                          className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-100"
+                        >
+                          Attend
+                        </button>
+                        <button
+                          onClick={() => handleManualStatusUpdate(reg?.id, 'approved')}
+                          disabled={reg?.status === 'approved'}
+                          className="flex-1 py-3 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-black uppercase tracking-widest border border-emerald-100 disabled:opacity-30"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleManualStatusUpdate(reg?.id, 'rejected')}
+                          className="flex-1 py-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-black uppercase tracking-widest border border-rose-100"
+                        >
+                          Reject
+                        </button>
+                     </>
+                   ) : (
+                     <button
+                        onClick={() => handleManualStatusUpdate(reg?.id, 'pending')}
+                        className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-100"
+                     >
+                        Restore Profile
+                     </button>
+                   )}
                 </div>
               </div>
             ))

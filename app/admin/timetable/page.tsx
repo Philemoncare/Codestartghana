@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { adminService } from "@/services/adminService";
 import {
   Plus, Trash2, Edit2, Save, X, Calendar, Clock,
-  BookOpen, Loader2, LayoutGrid, List, FileText, AlertCircle, CheckCircle2
+  BookOpen, Loader2, LayoutGrid, List, FileText, AlertCircle, CheckCircle2, Upload, Image as ImageIcon
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +25,9 @@ export default function TimetablePage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [timetableImage, setTimetableImage] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -35,44 +38,110 @@ export default function TimetablePage() {
   });
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await adminService.getTimetable();
-      if (data && data.error === 'TABLE_MISSING') {
-        setIsTableMissing(true);
-        setTimetable([]);
-      } else {
-        setTimetable(Array.isArray(data) ? data : []);
-        setIsTableMissing(false);
+      // Fetch timetable sessions
+      try {
+        const timetableData = await adminService.getTimetable();
+        if (timetableData && timetableData.error === 'TABLE_MISSING') {
+          setIsTableMissing(true);
+          setTimetable([]);
+        } else {
+          setTimetable(Array.isArray(timetableData) ? timetableData : []);
+          setIsTableMissing(false);
+        }
+      } catch (tError: any) {
+        console.error("Timetable Registry Fetch Error:", tError);
+        if (tError.message?.includes('TABLE_MISSING')) {
+          setIsTableMissing(true);
+        } else {
+          notify.error("Registry Sync Failed", "Failed to load session registry from server.");
+        }
       }
+
+      // Fetch timetable graphic setting separately
+      try {
+        const settingData = await adminService.getSetting('timetable_image');
+        if (settingData && settingData.value) {
+          setTimetableImage(settingData.value);
+        }
+      } catch (sError) {
+        console.error("Timetable Graphic Fetch Error:", sError);
+        // We don't toast here as it's non-critical if the graphic is just missing
+      }
+
     } catch (error: any) {
-      console.error("Timetable Fetch Error:", error);
-      if (error.message?.includes('TABLE_MISSING')) {
-        setIsTableMissing(true);
-      } else {
-        toast.error("Unable to sync timetable from server");
-      }
+      console.error("General Sync Error:", error);
+      notify.error("Critical Failure", "Unable to sync with server services.");
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      notify.warning("Image Too Large", "Please keep it under 2MB.");
+      return;
+    }
+
+    setUploadingImage(true);
+    const tid = notify.loading("Uploading timetable graphic...");
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        try {
+          await adminService.updateSetting('timetable_image', base64);
+          setTimetableImage(base64);
+          notify.success("Graphic Updated", "Timetable graphic updated successfully!");
+        } catch (error) {
+          notify.error("Upload Failed", "Failed to save the image to database.");
+        } finally {
+          setUploadingImage(false);
+          notify.dismiss(tid);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      notify.error("Process Fault", "An error occurred while reading the file.");
+      setUploadingImage(false);
+      notify.dismiss(tid);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!confirm("Are you sure you want to remove the timetable graphic?")) return;
+    try {
+      await adminService.updateSetting('timetable_image', "");
+      setTimetableImage(null);
+      notify.success("Graphic Removed", "Timetable graphic has been cleared.");
+    } catch (error) {
+      notify.error("Action Failed", "Unable to remove the image.");
+    }
+  };
+
   const handleRepairDatabase = async () => {
     setLoading(true);
-    const tid = toast.loading("Rebuilding database schema...");
+    const tid = notify.loading("Rebuilding database schema...");
     try {
       const res = await fetch('/api/admin/setup');
       const data = await res.json();
       if (data.success) {
-        toast.success("Database repaired successfully!", { id: tid });
+        notify.success("Schema Restored", "Database repaired successfully!");
         setIsTableMissing(false);
         fetchData();
       } else {
         throw new Error(data.error || "Repair failed");
       }
     } catch (error: any) {
-      toast.error(`Repair failed: ${error.message}`, { id: tid });
+      notify.error("Repair Failed", error.message);
     } finally {
       setLoading(false);
+      notify.dismiss(tid);
     }
   };
 
@@ -82,11 +151,11 @@ export default function TimetablePage() {
 
   const validateForm = () => {
     if (!formData.topic.trim()) {
-      toast.error("Course title is required");
+      notify.warning("Input Missing", "Course title is required");
       return false;
     }
     if (!formData.time.trim()) {
-      toast.error("Time slot is required");
+      notify.warning("Input Missing", "Time slot is required");
       return false;
     }
     return true;
@@ -97,24 +166,18 @@ export default function TimetablePage() {
     if (!validateForm()) return;
 
     setSubmitting(true);
-    const tid = toast.loading("Publishing session to schedule...");
+    const tid = notify.loading("Publishing session to schedule...");
 
     try {
       const response = await adminService.addTimetableEntry(formData);
 
       if (response && (response.error === 'TABLE_MISSING' || response.message?.includes('TABLE_MISSING'))) {
         setIsTableMissing(true);
-        toast.error("Database table missing. Please click the repair button.", { id: tid });
+        notify.error("Database table missing", "Please click the repair button.");
         return;
       }
 
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Session Published</span>
-          <span className="text-slate-400 text-xs font-medium">The schedule has been updated successfully.</span>
-        </div>,
-        { id: tid }
-      );
+      notify.success("Session Published", "The schedule has been updated successfully.");
 
       setFormData({ day: "Monday", time: "", topic: "", description: "" });
       setIsAdding(false);
@@ -126,15 +189,10 @@ export default function TimetablePage() {
         fetchData();
       }
     } catch (error: any) {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Publication Failed</span>
-          <span className="text-slate-400 text-xs font-medium">{error.message || "Something went wrong."}</span>
-        </div>,
-        { id: tid }
-      );
+      notify.error("Publication Failed", error.message || "Something went wrong.");
     } finally {
       setSubmitting(false);
+      notify.dismiss(tid);
     }
   };
 
@@ -142,18 +200,12 @@ export default function TimetablePage() {
     if (!validateForm()) return;
 
     setSubmitting(true);
-    const tid = toast.loading("Saving changes...");
+    const tid = notify.loading("Saving changes...");
 
     try {
       const response = await adminService.updateTimetableEntry({ id, ...formData });
 
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Changes Saved</span>
-          <span className="text-slate-400 text-xs font-medium">Session details updated.</span>
-        </div>,
-        { id: tid }
-      );
+      notify.success("Changes Saved", "Session details updated.");
 
       setEditingId(null);
 
@@ -163,22 +215,25 @@ export default function TimetablePage() {
         fetchData();
       }
     } catch (error: any) {
-      toast.error("Failed to update session", { id: tid });
+      notify.error("Update Failed", "Failed to update session details.");
     } finally {
       setSubmitting(false);
+      notify.dismiss(tid);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to remove this session from the timetable? This action cannot be undone.")) return;
 
-    const tid = toast.loading("Removing session...");
+    const tid = notify.loading("Removing session...");
     try {
       await adminService.deleteTimetableEntry(id);
-      toast.success("Session removed from schedule", { id: tid });
+      notify.success("Record Deleted", "Session removed from schedule.");
       setTimetable(prev => prev.filter(item => item.id !== id));
     } catch (error) {
-      toast.error("Failed to delete session", { id: tid });
+      notify.error("Deletion Failed", "Unable to remove session record.");
+    } finally {
+      notify.dismiss(tid);
     }
   };
 
@@ -322,7 +377,62 @@ export default function TimetablePage() {
       {/* Timetable List Section */}
       <div className="space-y-6">
         <div className="flex items-center gap-4 px-2">
-           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Current Schedule</h3>
+           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Timetable Graphic</h3>
+           <div className="h-px flex-1 bg-slate-100" />
+        </div>
+
+        <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm">
+           <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="w-full md:w-1/2 space-y-6">
+                 <div className="space-y-2">
+                    <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Visual Schedule</h4>
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                       Upload a high-quality graphic or PDF scan of the weekly timetable. This will be prominently displayed in the student dashboard.
+                    </p>
+                 </div>
+
+                 <div className="flex gap-4">
+                    <button
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                    >
+                       {uploadingImage ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                       {timetableImage ? "Change Graphic" : "Upload Graphic"}
+                    </button>
+                    {timetableImage && (
+                       <button
+                         onClick={handleRemoveImage}
+                         className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
+                       >
+                          Remove
+                       </button>
+                    )}
+                 </div>
+                 <input
+                   type="file"
+                   ref={imageInputRef}
+                   className="hidden"
+                   accept="image/*"
+                   onChange={handleImageUpload}
+                 />
+              </div>
+
+              <div className="w-full md:w-1/2 min-h-[200px] bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                 {timetableImage ? (
+                    <img src={timetableImage} alt="Timetable" className="w-full h-full object-contain" />
+                 ) : (
+                    <div className="text-center p-10 space-y-3">
+                       <ImageIcon size={40} className="text-slate-300 mx-auto" />
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No graphic uploaded</p>
+                    </div>
+                 )}
+              </div>
+           </div>
+        </div>
+
+        <div className="flex items-center gap-4 px-2 pt-6">
+           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Session Registry</h3>
            <div className="h-px flex-1 bg-slate-100" />
            <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{timetable.length} Active Blocks</span>

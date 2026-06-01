@@ -22,8 +22,9 @@ export async function POST(req: Request) {
     }
 
     const trimmedEmail = email.toLowerCase().trim();
+    // Get the most recent registration for this email
     const res = await query(
-      `SELECT * FROM registrations WHERE email = $1`,
+      `SELECT * FROM registrations WHERE email = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
       [trimmedEmail]
     );
 

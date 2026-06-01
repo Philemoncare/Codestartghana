@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminService } from "@/services/adminService";
 import { Loader2, ExternalLink, Check, X, Search, DollarSign, Mail, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 
@@ -21,7 +21,7 @@ export default function PaymentsPage() {
       const data = await adminService.getPayments();
       setPayments(data || []);
     } catch (error) {
-      toast.error("Failed to load payments");
+      notify.error("Data Sync Error", "Failed to load payment records.");
     } finally {
       setLoading(false);
     }
@@ -60,29 +60,14 @@ export default function PaymentsPage() {
   };
 
   const handleResendWelcome = async (regId: number) => {
-    const toastId = toast.loading(
-      <div className="flex flex-col gap-1">
-        <span className="font-black text-white text-sm tracking-tight">Dispatching Credentials</span>
-        <span className="text-slate-400 text-xs font-medium animate-pulse">Generating and sending welcome package...</span>
-      </div>
-    );
+    const toastId = notify.loading("Generating and sending welcome package...");
     try {
       await adminService.resendWelcomeEmail(regId);
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Email Transmitted</span>
-          <span className="text-slate-400 text-xs font-medium">Onboarding instructions have been delivered.</span>
-        </div>,
-        { id: toastId }
-      );
+      notify.success("Email Transmitted", "Onboarding instructions have been delivered.");
     } catch (error: any) {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-black text-white text-sm tracking-tight">Transmission Failed</span>
-          <span className="text-slate-400 text-xs font-medium">Unable to resend the welcome email.</span>
-        </div>,
-        { id: toastId }
-      );
+      notify.error("Transmission Failed", "Unable to resend the welcome email.");
+    } finally {
+      notify.dismiss(toastId);
     }
   };
 

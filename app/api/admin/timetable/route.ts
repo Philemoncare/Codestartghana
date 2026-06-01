@@ -1,42 +1,15 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyAdmin } from '@/lib/auth';
-
-/**
- * Helper to ensure table exists or handle errors by auto-creating the missing table
- */
-async function ensureTableAndQuery(queryText: string, params: any[] = []) {
-  try {
-    return await query(queryText, params);
-  } catch (error: any) {
-    // PostgreSQL error code 42P01 is "undefined_table"
-    if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
-      console.log('[TIMETABLE] Table missing, attempting auto-creation...');
-      await query(`
-        CREATE TABLE IF NOT EXISTS timetable (
-          id SERIAL PRIMARY KEY,
-          day VARCHAR(20) NOT NULL,
-          time VARCHAR(100) NOT NULL,
-          topic VARCHAR(255) NOT NULL,
-          description TEXT,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      // Retry the original query after creating the table
-      return await query(queryText, params);
-    }
-    throw error;
-  }
-}
+import { createAlert } from '@/lib/alerts';
 
 export async function GET() {
   try {
     await verifyAdmin();
-    const res = await ensureTableAndQuery('SELECT * FROM timetable ORDER BY id ASC');
+    const res = await query('SELECT * FROM timetable ORDER BY id ASC');
     return NextResponse.json(res.rows);
   } catch (error: any) {
-    console.error('FETCH TIMETABLE ERROR:', error);
+    console.error('[FETCH TIMETABLE ERROR]:', error.message);
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
   }
 }
@@ -53,10 +26,12 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const res = await ensureTableAndQuery(
+    const res = await query(
       'INSERT INTO timetable (day, time, topic, description) VALUES ($1, $2, $3, $4) RETURNING *',
       [day, time, topic, description || null]
     );
+
+    await createAlert('warning', `Timetable update: New topic '${topic}' added for ${day}`, 'admin');
 
     return NextResponse.json({
       success: true,
@@ -64,7 +39,7 @@ export async function POST(req: Request) {
       data: res.rows[0]
     });
   } catch (error: any) {
-    console.error('CREATE TIMETABLE ERROR:', error);
+    console.error('[CREATE TIMETABLE ERROR]:', error.message);
     return NextResponse.json({
       success: false,
       message: 'Failed to create timetable entry',
@@ -80,7 +55,7 @@ export async function PATCH(req: Request) {
 
     if (!id) return NextResponse.json({ success: false, message: 'ID required' }, { status: 400 });
 
-    const res = await ensureTableAndQuery(
+    const res = await query(
       `UPDATE timetable
        SET day = COALESCE($1, day),
            time = COALESCE($2, time),
@@ -96,13 +71,15 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, message: 'Entry not found' }, { status: 404 });
     }
 
+    await createAlert('warning', `Timetable update: Entry for ${res.rows[0].day} modified`, 'admin');
+
     return NextResponse.json({
       success: true,
       message: 'Timetable entry updated successfully',
       data: res.rows[0]
     });
   } catch (error: any) {
-    console.error('UPDATE TIMETABLE ERROR:', error);
+    console.error('[UPDATE TIMETABLE ERROR]:', error.message);
     return NextResponse.json({ success: false, message: 'Failed to update entry', error: error.message }, { status: 500 });
   }
 }
@@ -115,7 +92,7 @@ export async function DELETE(req: Request) {
 
     if (!id) return NextResponse.json({ success: false, message: 'ID required' }, { status: 400 });
 
-    const res = await ensureTableAndQuery('DELETE FROM timetable WHERE id = $1', [id]);
+    const res = await query('DELETE FROM timetable WHERE id = $1', [id]);
 
     if (res.rowCount === 0) {
        return NextResponse.json({ success: false, message: 'Entry not found' }, { status: 404 });
@@ -123,7 +100,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true, message: 'Entry deleted successfully' });
   } catch (error: any) {
-    console.error('DELETE TIMETABLE ERROR:', error);
+    console.error('[DELETE TIMETABLE ERROR]:', error.message);
     return NextResponse.json({ success: false, message: 'Failed to delete entry', error: error.message }, { status: 500 });
   }
 }

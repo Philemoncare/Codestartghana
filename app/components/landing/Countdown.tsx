@@ -12,12 +12,28 @@ export const Countdown = () => {
     minutes: 0,
     seconds: 0,
     isFinished: false,
-    progress: 0
+    progress: 0,
+    isReady: false
   });
 
   useEffect(() => {
+    let serverOffset = 0;
+
+    const syncTime = async () => {
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/system/time');
+        const data = await res.json();
+        const end = Date.now();
+        const latency = (end - start) / 2;
+        serverOffset = data.timestamp - (end - latency);
+      } catch (e) {
+        console.warn("Timer: Falling back to local clock", e);
+      }
+    };
+
     const calculateTimeLeft = () => {
-      const now = new Date();
+      const now = new Date(Date.now() + serverOffset);
       const difference = TARGET_DATE.getTime() - now.getTime();
 
       // Start date for progress calculation (from Jan 1, 2025)
@@ -27,7 +43,7 @@ export const Countdown = () => {
       const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
 
       if (difference <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isFinished: true, progress: 100 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isFinished: true, progress: 100, isReady: true });
         return;
       }
 
@@ -37,14 +53,17 @@ export const Countdown = () => {
         minutes: Math.floor((difference / 1000 / 60) % 60),
         seconds: Math.floor((difference / 1000) % 60),
         isFinished: false,
-        progress: progress
+        progress: progress,
+        isReady: true
       });
     };
 
-    const timer = setInterval(calculateTimeLeft, 1000);
-    calculateTimeLeft();
+    syncTime().then(() => {
+      calculateTimeLeft();
+      const timer = setInterval(calculateTimeLeft, 1000);
+      return () => clearInterval(timer);
+    });
 
-    return () => clearInterval(timer);
   }, []);
 
   const scrollToRegistration = () => {
@@ -55,6 +74,17 @@ export const Countdown = () => {
         window.location.href = '/register';
     }
   };
+
+  if (!timeLeft.isReady) {
+    return (
+      <section className="py-20 md:py-32 bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+           <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
+           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Atomic Clock...</p>
+        </div>
+      </section>
+    );
+  }
 
   if (timeLeft.isFinished) {
     return (
@@ -152,12 +182,12 @@ export const Countdown = () => {
 };
 
 const TimeUnit = ({ value, label }: { value: number; label: string }) => (
-  <div className="flex flex-col items-center p-8 md:p-10 bg-white border border-slate-100 rounded-[2.5rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] transition-all duration-500 group relative overflow-hidden">
+  <div className="flex flex-col items-center p-6 sm:p-8 md:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] transition-all duration-500 group relative overflow-hidden">
     <div className="absolute top-0 left-0 w-full h-1 bg-transparent group-hover:bg-blue-600 transition-colors" />
-    <span className="text-5xl md:text-7xl font-black text-slate-900 tabular-nums tracking-tighter group-hover:scale-110 transition-transform duration-500 block">
+    <span className="text-4xl sm:text-5xl md:text-7xl font-black text-slate-900 tabular-nums tracking-tighter group-hover:scale-110 transition-transform duration-500 block leading-none">
       {value.toString().padStart(2, '0')}
     </span>
-    <span className="text-[11px] md:text-[13px] font-black uppercase tracking-[0.25em] text-slate-400 mt-4 group-hover:text-blue-600 transition-colors">
+    <span className="text-[9px] sm:text-[11px] md:text-[13px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-400 mt-2 sm:mt-4 group-hover:text-blue-600 transition-colors">
       {label}
     </span>
   </div>

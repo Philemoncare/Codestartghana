@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   id SERIAL PRIMARY KEY,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   full_name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) NOT NULL,
   password_hash TEXT,
   whatsapp VARCHAR(50) NOT NULL,
   age INTEGER,
@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS registrations (
   approval_email_sent BOOLEAN DEFAULT FALSE,
   approval_email_sent_at TIMESTAMP
 );
+
+-- Partial unique index to allow email reuse after rejection
+CREATE UNIQUE INDEX IF NOT EXISTS idx_registrations_active_email ON registrations (email) WHERE (status != 'rejected');
 
 CREATE TABLE IF NOT EXISTS payments (
   id SERIAL PRIMARY KEY,
@@ -37,7 +40,7 @@ CREATE TABLE IF NOT EXISTS admins (
 );
 
 -- SEED AUTHORIZED ADMIN (Password should be hashed with bcrypt)
--- INSERT INTO admins (username, password_hash, role) VALUES ('philemonmelabah0@gmail.com', '$2a$10$YourHashedPasswordHere', 'superadmin');
+-- INSERT INTO admins (username, password_hash, role) VALUES ('favmoms440@gmail.com', '$2a$10$YourHashedPasswordHere', 'superadmin');
 
 CREATE TABLE IF NOT EXISTS verification_codes (
   id SERIAL PRIMARY KEY,
@@ -67,6 +70,25 @@ CREATE TABLE IF NOT EXISTS timetable (
   topic VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS alerts (
+  id SERIAL PRIMARY KEY,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('critical', 'warning', 'info')),
+  message TEXT NOT NULL,
+  source VARCHAR(50) NOT NULL, -- 'system', 'admin', 'student'
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sms_logs (
+  id SERIAL PRIMARY KEY,
+  student_name VARCHAR(255),
+  phone_number VARCHAR(50) NOT NULL,
+  message_body TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'sent', -- 'sent', 'failed'
+  provider_response TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- INITIAL SEED FOR TIMETABLE

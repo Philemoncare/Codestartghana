@@ -12,6 +12,7 @@ import autoTable from "jspdf-autotable";
 
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { SCHEDULE_DISPLAY } from "@/lib/constants";
 
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
@@ -536,6 +537,24 @@ export default function AdminDashboard() {
            </div>
 
            <div className="bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-sm">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Official Schedule</h4>
+              <div className="space-y-4 mb-6">
+                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                    <div className="space-y-1">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Training Start</p>
+                       <p className="text-xs font-bold text-slate-900">{SCHEDULE_DISPLAY.trainingStart}</p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Registration Deadline</p>
+                       <p className="text-xs font-bold text-slate-900">{SCHEDULE_DISPLAY.registrationDeadline}</p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mode</p>
+                       <p className="text-xs font-bold text-slate-900">{SCHEDULE_DISPLAY.mode}</p>
+                    </div>
+                 </div>
+              </div>
+
               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Management Tools</h4>
               <div className="grid grid-cols-1 gap-3">
                  <Link href="/admin/registrations" className="flex items-center justify-center gap-2 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-900 hover:bg-slate-100 transition-all active:scale-[0.98]">

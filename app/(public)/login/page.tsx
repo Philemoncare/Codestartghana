@@ -30,7 +30,7 @@ export default function LoginPage() {
       notify.success("Login Successful", "Welcome back to your learning dashboard.");
       router.push("/student/dashboard");
     } catch (error: any) {
-      notify.error("Login Failed", "We couldn't sign you in. Please check your email and password and try again.");
+      notify.error("Login Failed", error.message || "We couldn't sign you in. Please check your email and password and try again.");
     } finally {
       setLoading(false);
     }

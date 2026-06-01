@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, ChevronRight, Mail, LayoutDashboard } from "lucide-react";
+import { Menu, X, ChevronRight, Mail, LayoutDashboard, Info } from "lucide-react";
+import { SCHEDULE_DISPLAY } from "@/lib/constants";
 
 import Image from "next/image";
 
@@ -50,9 +51,22 @@ export const Navbar = () => {
 
   return (
     <>
+      {/* Platform-wide Training Schedule Banner */}
+      <div className="fixed top-0 left-0 right-0 z-[110] bg-blue-600 text-white py-2.5 px-4 overflow-hidden">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
+          <Info size={14} className="animate-pulse hidden sm:block" />
+          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-center">
+            Training begins <span className="text-blue-100">{SCHEDULE_DISPLAY.trainingStart}</span> ({SCHEDULE_DISPLAY.mode}).
+            <span className="hidden md:inline ml-1 opacity-80 italic">Registration closes {SCHEDULE_DISPLAY.registrationDeadline}.</span>
+          </p>
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shimmer" style={{ width: '200%' }} />
+      </div>
+
       <nav
         className={cn(
           "fixed top-0 left-0 right-0 z-[100] transition-all duration-500 isolate",
+          "mt-9 sm:mt-10", // Offset for banner
           isScrolled
             ? "bg-white/90 backdrop-blur-xl border-b border-slate-200/60 py-4 shadow-sm"
             : "bg-transparent py-6 md:py-8"

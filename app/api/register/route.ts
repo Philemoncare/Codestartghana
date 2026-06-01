@@ -4,9 +4,18 @@ import { sendRegistrationReceivedEmail, sendDetailedOnboardingEmail } from '@/li
 import { sendRegistrationConfirmationSMS } from '@/lib/sms';
 import bcrypt from 'bcryptjs';
 import { createAlert } from '@/lib/alerts';
+import { isRegistrationOpen } from '@/lib/constants';
 
 export async function POST(req: Request) {
   try {
+    // 0. Check Deadline
+    if (!isRegistrationOpen()) {
+      return NextResponse.json({
+        error: 'Registration is now closed for this cohort.',
+        code: 'REGISTRATION_CLOSED'
+      }, { status: 403 });
+    }
+
     // 1. Parse JSON safely
     let body;
     try {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { registerService } from "@/services/registerService";
 import { paymentService } from "@/services/paymentService";
 import { notify } from "@/lib/notify";
+import { isRegistrationOpen, SCHEDULE_DISPLAY } from "@/lib/constants";
 import {
   Loader2,
   CheckCircle,
@@ -100,6 +101,34 @@ export const EnrollmentWizard = () => {
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
+  if (!isRegistrationOpen()) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-[2.5rem] p-12 shadow-premium text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
+        <div className="w-24 h-24 bg-rose-50 text-rose-500 rounded-[2rem] flex items-center justify-center mx-auto border border-rose-100 shadow-inner">
+          <ShieldCheck size={48} />
+        </div>
+        <div className="space-y-4">
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Registration Closed</h2>
+          <p className="text-slate-500 font-medium text-lg max-w-md mx-auto">
+            Registration for this cohort ended on <span className="text-slate-900 font-bold">{SCHEDULE_DISPLAY.registrationDeadline}</span>.
+          </p>
+          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 inline-block text-left">
+             <p className="text-xs font-black uppercase tracking-widest text-blue-600 mb-2">Next Steps</p>
+             <p className="text-sm text-slate-600 font-medium">Please follow our social channels or contact support to be notified when the next cohort opens.</p>
+          </div>
+        </div>
+        <div className="pt-6">
+          <button
+            onClick={() => router.push("/")}
+            className="px-10 py-4 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!isMounted) return (
      <div className="bg-white border border-slate-200 rounded-[2.5rem] p-12 shadow-premium animate-pulse flex items-center justify-center min-h-[400px]">

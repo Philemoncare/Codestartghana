@@ -20,15 +20,20 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const key = searchParams.get('key');
 
-    const studentAccessKeys = ['timetable_image'];
+    const publicKeys = ['cohort_start_date'];
+    const studentAccessKeys = ['timetable_image', 'cohort_start_date'];
+
     const isAdmin = await getAdminSession();
     const studentEmail = cookies().get('student_email')?.value;
 
-    if (!isAdmin && !studentEmail) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const isPublicAccess = key && publicKeys.includes(key);
+    const isStudentAccess = key && studentAccessKeys.includes(key) && studentEmail;
+
+    if (!isPublicAccess && !isStudentAccess && !isAdmin) {
+       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (key && !studentAccessKeys.includes(key) && !isAdmin) {
+    if (key && !isPublicAccess && !studentAccessKeys.includes(key) && !isAdmin) {
        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

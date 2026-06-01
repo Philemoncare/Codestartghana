@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { ArrowUpRight, Timer, Sparkles } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowUpRight, Timer, Sparkles, Globe } from "lucide-react";
+import { TRAINING_START_DATE } from '@/lib/constants';
 
-const TARGET_DATE = new Date('2026-06-06T13:00:00');
+const TARGET_DATE_DEFAULT = TRAINING_START_DATE;
 
 export const Countdown = () => {
+  const [targetDate, setTargetDate] = useState<Date>(TARGET_DATE_DEFAULT);
+  const targetDateRef = useRef<Date>(TARGET_DATE_DEFAULT);
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -20,12 +23,29 @@ export const Countdown = () => {
     let serverOffset = 0;
     let timer: NodeJS.Timeout;
 
+    const fetchTargetDate = async () => {
+      try {
+        const res = await fetch('/api/admin/settings?key=cohort_start_date');
+        if (res.ok) {
+           const settings = await res.json();
+           if (settings && settings.value) {
+             const newDate = new Date(settings.value);
+             setTargetDate(newDate);
+             targetDateRef.current = newDate;
+           }
+        }
+      } catch (e) {
+        console.warn("Timer: Failed to fetch cohort start date", e);
+      }
+    };
+
     const calculateTimeLeft = (offset = 0) => {
       const now = new Date(Date.now() + offset);
-      const difference = TARGET_DATE.getTime() - now.getTime();
+      const target = targetDateRef.current;
+      const difference = target.getTime() - now.getTime();
 
       const startDate = new Date('2025-01-01T00:00:00');
-      const totalDuration = TARGET_DATE.getTime() - startDate.getTime();
+      const totalDuration = target.getTime() - startDate.getTime();
       const elapsed = now.getTime() - startDate.getTime();
       const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
 
@@ -61,7 +81,9 @@ export const Countdown = () => {
     };
 
     // Initial immediate calculation with local time
-    calculateTimeLeft(0);
+    fetchTargetDate().then(() => {
+        calculateTimeLeft(0);
+    });
 
     // Start interval
     timer = setInterval(() => calculateTimeLeft(serverOffset), 1000);
@@ -73,6 +95,7 @@ export const Countdown = () => {
       if (timer) clearInterval(timer);
     };
   }, []);
+
 
   const scrollToRegistration = () => {
     const registrationSection = document.getElementById('registration');

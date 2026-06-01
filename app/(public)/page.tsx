@@ -211,7 +211,7 @@ export default function LandingPage() {
             Bridge the gap. <br/> <span className="text-blue-500">Build for reality.</span>
           </h2>
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto font-medium leading-relaxed">
-            The January 2026 cohort is limited to 25 seats to ensure high-quality mentorship. Secure your engineering spot today.
+            The June 2026 cohort is limited to 25 seats to ensure high-quality mentorship. Secure your engineering spot today.
           </p>
           <div className="pt-4">
             {isStudent ? (

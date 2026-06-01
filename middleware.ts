@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. STUDENT PORTAL PROTECTION & REDIRECTION
-  const isStudentPortalRoute = pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/profile');
+  const isStudentPortalRoute = pathname.startsWith('/student');
   const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/enroll' || pathname === '/forgot-password' || pathname === '/reset-password';
 
   // If logged in as a student

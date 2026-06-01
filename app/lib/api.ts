@@ -1,8 +1,12 @@
 export async function apiFetch(url: string, options: RequestInit = {}) {
   // Disable caching for all API calls to ensure data freshness
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+
   const fetchOptions: RequestInit = {
     ...options,
     cache: 'no-store',
+    signal: controller.signal,
     headers: {
       ...options.headers,
     }
@@ -11,8 +15,13 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   let response: Response;
   try {
     response = await fetch(url, fetchOptions);
+    clearTimeout(id);
   } catch (networkError: any) {
+    clearTimeout(id);
     console.error("Network error during fetch:", url, networkError);
+    if (networkError.name === 'AbortError') {
+      throw new Error("Request timed out. The server or database is taking too long to respond.");
+    }
     throw new Error("Connection failed. Please check your internet and try again.");
   }
 

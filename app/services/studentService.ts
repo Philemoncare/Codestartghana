@@ -27,6 +27,15 @@ export const studentService = {
     });
   },
 
+  async updateProfilePhoto(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiFetch('/api/student/profile/photo', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
   async logout() {
     return apiFetch('/api/student/logout', {
       method: 'POST',

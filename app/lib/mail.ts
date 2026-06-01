@@ -213,7 +213,7 @@ export async function sendDetailedOnboardingEmail(to: string, studentData: any) 
             </tr>
             <tr>
               <td style="padding: 12px 0; color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Cohort Session</td>
-              <td style="padding: 12px 0; color: #0f172a; font-weight: 700; text-align: right;">January 2026 Cycle</td>
+              <td style="padding: 12px 0; color: #0f172a; font-weight: 700; text-align: right;">June 2026 Cycle</td>
             </tr>
             <tr>
               <td style="padding: 12px 0; color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Registered Name</td>

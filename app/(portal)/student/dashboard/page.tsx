@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,11 +9,13 @@ import {
   LogOut, Calendar, Bell, CheckCircle2,
   Clock, User, Download, Play, ShieldCheck,
   ChevronRight, ExternalLink, Zap, Award,
-  BookOpen, FolderKanban, History, Mail, Phone, School
+  BookOpen, FolderKanban, History, Mail, Phone, School,
+  Camera, Map, FileText, MessageSquare, Info
 } from "lucide-react";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { TRAINING_START_DATE, SCHEDULE_DISPLAY } from "@/lib/constants";
 
 export default function StudentDashboardPage() {
   const [data, setData] = useState<any>(null);
@@ -21,34 +23,42 @@ export default function StudentDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [timetableImage, setTimetableImage] = useState<string | null>(null);
+  const [cohortDate, setCohortDate] = useState<Date>(TRAINING_START_DATE);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch dashboard data
       const result = await studentService.getDashboardData();
       setData(result);
 
-      // Fetch settings separately so it doesn't block the main data
       try {
-        const settingsRes = await fetch('/api/admin/settings?key=timetable_image');
-        if (settingsRes.ok) {
-           const settings = await settingsRes.json();
-           if (settings && settings.value) {
-             setTimetableImage(settings.value);
-           }
+        const [timetableRes, cohortRes] = await Promise.all([
+          fetch('/api/admin/settings?key=timetable_image'),
+          fetch('/api/admin/settings?key=cohort_start_date')
+        ]);
+
+        if (timetableRes.ok) {
+           const settings = await timetableRes.json();
+           if (settings && settings.value) setTimetableImage(settings.value);
+        }
+
+        if (cohortRes.ok) {
+           const settings = await cohortRes.json();
+           if (settings && settings.value) setCohortDate(new Date(settings.value));
         }
       } catch (e) {
-        console.warn("Non-critical: Failed to fetch timetable image", e);
+        console.warn("Non-critical: Failed to fetch settings", e);
       }
     } catch (err: any) {
       console.error("Dashboard Fetch Error:", err);
       setError(err.message || "Failed to load dashboard");
-
       if (err.status === 403 || err.status === 401) {
-        notify.error("Session Expired", "Please log in again to continue.");
+        notify.error("Session Expired", "Please log in again.");
         router.push("/login");
       }
     } finally {
@@ -58,11 +68,10 @@ export default function StudentDashboardPage() {
 
   useEffect(() => {
     fetchData();
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000 * 60);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  // 1. Destructure data safely with defaults at the top level
   const {
     student = {},
     announcements = [],
@@ -75,419 +84,370 @@ export default function StudentDashboardPage() {
     isApproved = false
   } = data || {};
 
-  // 2. Computed values using hooks at the top level
-  const attendanceRate = useMemo(() => {
-    if (!schedule.length || attendanceCount === 0) return "0%";
-    const rate = Math.round((attendanceCount / schedule.length) * 100);
-    return `${Math.min(100, rate)}%`;
-  }, [schedule.length, attendanceCount]);
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return notify.error("Image too large (max 2MB)");
 
-  const activeClass = useMemo(() => {
-    if (!schedule || schedule.length === 0) return null;
-
-    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const currentDay = dayNames[currentTime.getDay()];
-
-    return schedule.find((session: any) => {
-      if (!session.time || !session.time.includes("-")) return false;
-      if (session.day !== currentDay) return false;
-
-      try {
-        const parts = session.time.split("-");
-        const startPart = parts[0].trim();
-        const [time, ampm] = startPart.split(" ");
-        let [hours, minutes] = time.split(":").map(Number);
-        if (isNaN(minutes)) minutes = 0;
-
-        if (ampm === "PM" && hours !== 12) hours += 12;
-        if (ampm === "AM" && hours === 12) hours = 0;
-
-        const startTime = new Date(currentTime);
-        startTime.setHours(hours, minutes, 0, 0);
-
-        const activationTime = new Date(startTime.getTime() - 15 * 60000);
-        const endTime = new Date(startTime.getTime() + 120 * 60000);
-
-        return currentTime >= activationTime && currentTime <= endTime;
-      } catch (e) {
-        return false;
-      }
-    });
-  }, [schedule, currentTime]);
-
-  const firstName = student?.fullName ? student.fullName.split(' ')[0] : 'Student';
-
-  const handleLogout = async () => {
+    setUploadingPhoto(true);
     try {
-      await studentService.logout();
-      router.push('/login');
-    } catch (e) {
-      router.push('/login');
+      const res = await studentService.updateProfilePhoto(file);
+      if (res.success) {
+        notify.success("Profile photo updated");
+        setData((prev: any) => ({
+          ...prev,
+          student: { ...prev.student, profile_photo_url: res.url }
+        }));
+      }
+    } catch (err) {
+      notify.error("Failed to upload photo");
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
-  // 3. Handle Loading State
-  if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto px-6 mt-12 space-y-10">
-         <section className="bg-white border border-slate-200 rounded-[2.5rem] p-12 shadow-sm">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-               <Skeleton className="w-32 h-32 rounded-[2rem]" />
-               <div className="space-y-4 flex-1">
-                  <Skeleton className="h-4 w-32 rounded-full" />
-                  <Skeleton className="h-12 w-64 rounded-xl" />
-                  <Skeleton className="h-4 w-96 rounded-full" />
-               </div>
-            </div>
-         </section>
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            <div className="lg:col-span-2 space-y-10">
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Skeleton className="h-32 rounded-[2rem]" />
-                  <Skeleton className="h-32 rounded-[2rem]" />
-                  <Skeleton className="h-32 rounded-[2rem]" />
-                  <Skeleton className="h-32 rounded-[2rem]" />
-               </div>
-               <Skeleton className="h-96 rounded-[2.5rem]" />
-            </div>
-            <div className="space-y-10">
-               <Skeleton className="h-64 rounded-[2.5rem]" />
-               <Skeleton className="h-64 rounded-[2.5rem]" />
-            </div>
-         </div>
-      </div>
-    );
-  }
+  const cohortStartDate = cohortDate;
+  const countdown = useMemo(() => {
+    const diff = cohortStartDate.getTime() - currentTime.getTime();
+    if (diff <= 0) return null;
+    return {
+      d: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      h: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      m: Math.floor((diff / 1000 / 60) % 60),
+      s: Math.floor((diff / 1000) % 60)
+    };
+  }, [currentTime]);
 
-  // 4. Handle Error or Missing Data State
-  if (error || !data) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-         <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mb-6 border border-rose-100 shadow-sm">
-            <Bell size={40} className="animate-bounce" />
-         </div>
-         <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase mb-2">Sync Error</h1>
-         <p className="text-slate-500 font-medium max-w-md mb-8">
-           We encountered a problem while retrieving your engineering profile. This usually happens during database maintenance.
-         </p>
-         <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              onClick={() => fetchData()}
-              className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
-            >
-               Retry Synchronization
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-8 py-4 bg-white text-slate-600 border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
-            >
-               Sign Out
-            </button>
-         </div>
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
+
+  if (error || !data) return <ErrorState onRetry={fetchData} />;
 
   return (
-    <main className="pb-24">
-      <div className="max-w-6xl mx-auto px-6 mt-12 space-y-10 animate-in fade-in duration-700">
+    <main className="min-h-screen bg-[#FBFBFE] pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 md:pt-8 space-y-4 md:space-y-6">
 
-        <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-12 shadow-sm overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl -mr-32 -mt-32" />
+        {/* 1. COMPACT PREMIUM PROFILE SECTION */}
+        <section className="bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/40 rounded-full blur-3xl -mr-20 -mt-20 group-hover:bg-blue-100/40 transition-colors duration-700" />
 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative z-10">
-            <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
-               <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-[2rem] bg-slate-900 flex items-center justify-center text-white overflow-hidden shadow-xl shrink-0">
-                  {(student.profile_photo_url || student.profilePhotoUrl) ? (
-                    <img
-                      src={student.profile_photo_url || student.profilePhotoUrl}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
+          <div className="flex flex-col lg:flex-row items-center lg:items-start gap-5 md:gap-8 relative z-10">
+            <div className="relative group/avatar shrink-0">
+               <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-slate-900 border-4 border-white shadow-xl overflow-hidden flex items-center justify-center transition-transform duration-500 group-hover/avatar:scale-[1.02]">
+                  {student.profile_photo_url ? (
+                    <img src={student.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <>
-                      <User size={48} className="opacity-20 absolute" />
-                      <span className="text-4xl font-black relative z-10">{student.fullName?.charAt(0) || student.full_name?.charAt(0) || 'S'}</span>
-                    </>
+                    <span className="text-3xl font-black text-white">{student.fullName?.charAt(0) || 'S'}</span>
+                  )}
+                  {uploadingPhoto && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                       <Clock className="animate-spin text-white" size={20} />
+                    </div>
                   )}
                </div>
-
-               <div className="space-y-3">
-                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">
-                    {isApproved ? <ShieldCheck size={12} /> : <Clock size={12} />}
-                    {isApproved ? 'Verified Engineering Student' : 'Identity Verification Pending'}
-                 </div>
-                 <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-none">
-                   {student.fullName}
-                 </h1>
-                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-slate-500 font-bold text-xs uppercase tracking-widest">
-                    <span className="flex items-center gap-2"><Mail size={14} /> {student.email}</span>
-                    <span className="flex items-center gap-2"><School size={14} /> {student.school || 'N/A'}</span>
-                    <span className="flex items-center gap-2"><Zap size={14} /> {student.experience}</span>
-                    <span className="flex items-center gap-2"><Clock size={14} /> ID: #CS-2026-{student.id?.toString().padStart(4, '0') || '0000'}</span>
-                 </div>
-               </div>
+               <button
+                 onClick={() => fileInputRef.current?.click()}
+                 className="absolute bottom-0 right-0 w-8 h-8 md:w-9 md:h-9 bg-blue-600 text-white rounded-full border-2 border-white shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-90 transition-all"
+               >
+                  <Camera size={14} />
+               </button>
+               <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
             </div>
 
-            {isApproved && (
-               <div className="w-full md:w-80 space-y-4 bg-slate-50 p-8 rounded-[2rem] border border-slate-100">
-                  <div className="flex justify-between items-end">
-                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Progress</span>
-                     <span className="text-2xl font-black text-slate-900">{progress.percentage}%</span>
-                  </div>
-                  <div className="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                     <div
-                       className="h-full bg-blue-600 transition-all duration-1000"
-                       style={{ width: `${progress.percentage}%` }}
-                     />
-                  </div>
-                  <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                     <span>{progress.completedModules} Modules Done</span>
-                     <span>{progress.percentage === 0 ? "Course Not Started" : `${progress.percentage}% Accuracy`}</span>
-                  </div>
+            <div className="flex-1 space-y-4 text-center lg:text-left w-full">
+               <div className="space-y-1">
+                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">
+                    <ShieldCheck size={10} /> Verified Engineering Student
+                 </div>
+                 <h1 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter leading-tight">
+                   {student.fullName}
+                 </h1>
                </div>
-            )}
+
+               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 border-t border-slate-100 pt-4">
+                  <InfoItem label="Student ID" value={`#CS-${student.id?.toString().padStart(4, '0') || '0000'}`} icon={<Zap size={12} />} />
+                  <InfoItem label="Institution" value={student.school || 'Private Student'} icon={<School size={12} />} />
+                  <InfoItem label="Learning Level" value={student.experience} icon={<Award size={12} />} />
+                  <InfoItem label="Email Address" value={student.email} icon={<Mail size={12} />} />
+                  <InfoItem label="Enrollment Date" value={new Date(student.created_at).toLocaleDateString()} icon={<Calendar size={12} />} />
+               </div>
+            </div>
           </div>
         </section>
 
-        {!isApproved ? (
-          <div className={cn(
-            "rounded-[2.5rem] p-16 text-center space-y-6",
-            student.status === 'rejected' ? "bg-rose-50 border border-rose-200" : "bg-amber-50/50 border border-amber-200 animate-pulse"
-          )}>
-             <div className={cn(
-               "w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto shadow-sm border",
-               student.status === 'rejected' ? "text-rose-500 border-rose-100" : "text-amber-500 border-amber-100"
-             )}>
-                {student.status === 'rejected' ? <ShieldCheck size={40} className="rotate-180" /> : <Clock size={40} />}
-             </div>
-             <div className="max-w-md mx-auto space-y-3">
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  {student.status === 'rejected' ? "Application Declined" : "Awaiting Activation"}
-                </h3>
-                <p className="text-slate-600 font-medium">
-                  {student.status === 'rejected'
-                    ? "Unfortunately, your application for this cohort has been declined. Please contact support for more details."
-                    : "Your account is currently in the verification queue. Full portal access will be granted once your tuition is verified."}
-                </p>
-             </div>
-             <div className="pt-4">
-                <a
+        {/* 2. PROGRESS & COHORT SYNC */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+           <div className="lg:col-span-2 space-y-4 md:space-y-6">
+
+             {/* Dynamic Progress Card */}
+             <section className="bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-8 shadow-sm relative overflow-hidden group">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                   <div className="space-y-3 text-center md:text-left">
+                      {progress.percentage === 0 ? (
+                        <>
+                          <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">Your learning journey is ready to begin.</h3>
+                          <p className="text-slate-500 text-sm font-medium max-w-sm">Complete your first lesson to unlock progress tracking.</p>
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                            <Link href="/student/learning-space" className="inline-flex items-center gap-3 px-6 py-3.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-100 active:scale-95 transition-all">
+                               Start Learning <Play size={14} fill="currentColor" />
+                            </Link>
+                            <Link href="/student/learning-space" className="inline-flex items-center gap-3 px-6 py-3.5 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 border border-slate-100 transition-all">
+                               Continue Learning <ChevronRight size={14} />
+                            </Link>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Active Curriculum</span>
+                             <h3 className="text-2xl font-black text-slate-900 tracking-tight">{progress.currentModule}</h3>
+                          </div>
+                          <p className="text-slate-500 text-sm font-medium">{progress.completedModules} of {progress.totalModules} modules completed.</p>
+                          <Link href="/student/learning-space" className="inline-flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+                             Continue Learning <ChevronRight size={14} />
+                          </Link>
+                        </>
+                      )}
+                   </div>
+
+                   <div className="relative w-28 h-28 md:w-36 md:h-36 shrink-0">
+                      <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                         <circle cx="50" cy="50" r="45" fill="transparent" stroke="#f1f5f9" strokeWidth="8" />
+                         <circle
+                           cx="50" cy="50" r="45" fill="transparent"
+                           stroke="url(#progress-grad)" strokeWidth="8"
+                           strokeDasharray="282.7"
+                           strokeDashoffset={282.7 - (282.7 * (progress.percentage || 0)) / 100}
+                           strokeLinecap="round"
+                           className="transition-all duration-1000 ease-out"
+                         />
+                         <defs>
+                           <linearGradient id="progress-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                             <stop offset="0%" stopColor="#2563eb" />
+                             <stop offset="100%" stopColor="#4f46e5" />
+                           </linearGradient>
+                         </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                         <span className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">{progress.percentage}%</span>
+                         <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Overall</span>
+                      </div>
+                   </div>
+                </div>
+             </section>
+
+             {/* Quick Access Learning Cards */}
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <LearningCard
+                  href="/student/learning-space"
+                  title="Learning Space"
+                  description="Access active lessons, labs and interactive sandboxes."
+                  icon={<BookOpen size={24} />}
+                  color="blue"
+                />
+                <LearningCard
+                  href="/student/curriculum"
+                  title="Curriculum"
+                  description="View the complete roadmap from HTML to Fullstack React."
+                  icon={<Map size={24} />}
+                  color="emerald"
+                />
+                <LearningCard
+                  href="/student/projects"
+                  title="Projects"
+                  description="Submit and track your weekly practical assignments."
+                  icon={<FolderKanban size={24} />}
+                  color="indigo"
+                />
+                <LearningCard
+                  href="/student/resources"
+                  title="Resources"
+                  description="Hand-picked PDFs, guides, and professional tools."
+                  icon={<FileText size={24} />}
+                  color="amber"
+                />
+                <LearningCard
                   href={process.env.NEXT_PUBLIC_WHATSAPP_LINK || "#"}
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-200"
-                >
-                   Contact Engineering Support <ChevronRight size={14} />
-                </a>
+                  title="Support"
+                  description="Contact the student success team for assistance."
+                  icon={<MessageSquare size={24} />}
+                  color="blue"
+                />
              </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+           </div>
 
-            <div className="lg:col-span-2 space-y-10">
-               <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatBox label="Modules Done" value={progress.completedModules} icon={<CheckCircle2 className="text-emerald-500" />} />
-                  <StatBox label="Attendance Rate" value={attendanceRate} icon={<Calendar className="text-blue-500" />} />
-                  <StatBox label="Badges Earned" value={badges.length} icon={<Award className="text-amber-500" />} />
-                  <StatBox label="Submissions" value={projects.length} icon={<FolderKanban className="text-purple-500" />} />
-               </section>
+           {/* 3. SIDEBAR: NOTIFICATIONS & COUNTDOWN */}
+           <aside className="space-y-4 md:space-y-6">
 
-               <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-                  <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                     <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                        <Bell size={20} className="text-blue-600" /> Administrative Briefing
-                     </h3>
-                  </div>
-                  <div className="divide-y divide-slate-50">
-                     {announcements.length === 0 ? (
-                       <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
-                          No announcements published yet
-                       </div>
-                     ) : (
-                       announcements.map((ann: any) => (
-                         <div key={ann.id} className="p-8 hover:bg-slate-50/50 transition-colors group">
-                            <div className="flex justify-between items-center mb-3">
-                               <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{ann.title}</h4>
-                               {ann.priority === 'high' && <span className="px-2 py-0.5 bg-rose-500 text-white text-[8px] font-black uppercase rounded tracking-widest">Priority</span>}
-                            </div>
-                            <p className="text-slate-600 font-medium leading-relaxed mb-4 text-sm">{ann.content}</p>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(ann.created_at).toLocaleDateString()}</span>
-                         </div>
-                       ))
-                     )}
-                  </div>
-               </section>
+              {/* Enhanced Countdown Timer */}
+              {countdown && (
+                <section className="bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] p-6 text-white relative overflow-hidden shadow-2xl">
+                   <div className="absolute top-0 right-0 p-8 opacity-5">
+                      <Clock size={100} />
+                   </div>
+                   <div className="relative z-10 space-y-5">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">Next Cohort Sync</span>
+                        <h4 className="text-xl font-black italic tracking-tighter">Live Session Starts In</h4>
+                      </div>
 
-               <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-                  <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                     <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                        <History size={20} className="text-blue-600" /> Attendance History
-                     </h3>
-                     <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{attendanceCount} Sessions Verified</span>
-                  </div>
-                  <div className="p-8">
-                     {attendanceHistory.length === 0 ? (
-                       <p className="text-center text-slate-400 font-bold uppercase tracking-widest text-[10px] py-10">No attendance records found.</p>
-                     ) : (
-                       <div className="space-y-4">
-                          {attendanceHistory.map((record: any) => (
-                             <div key={record.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <div className="flex items-center gap-4">
-                                   <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                      <CheckCircle2 size={18} />
-                                   </div>
-                                   <div>
-                                      <p className="text-sm font-black text-slate-900">{record.topic}</p>
-                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{record.day} • {record.time}</p>
-                                   </div>
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(record.attended_at).toLocaleDateString()}</span>
-                             </div>
-                          ))}
-                       </div>
-                     )}
-                  </div>
-               </section>
+                      <div className="grid grid-cols-4 gap-2">
+                         <TimeBlock label="Days" value={countdown.d} />
+                         <TimeBlock label="Hrs" value={countdown.h} />
+                         <TimeBlock label="Min" value={countdown.m} />
+                         <TimeBlock label="Sec" value={countdown.s} isLast />
+                      </div>
 
-               {timetableImage && (
-                  <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-                     <div className="p-8 border-b border-slate-50">
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                           <Calendar size={20} className="text-blue-600" /> Weekly Schedule Graphic
-                        </h3>
-                     </div>
-                     <div className="p-4 md:p-8 bg-slate-50">
-                        <div className="bg-white p-2 rounded-3xl border border-slate-200 shadow-inner overflow-hidden">
-                           <img
-                             src={timetableImage}
-                             alt="Weekly Timetable"
-                             className="w-full h-auto rounded-2xl"
-                           />
-                        </div>
-                     </div>
-                  </section>
-               )}
+                      <div className="pt-4 border-t border-white/10">
+                         <p className="text-[10px] text-slate-400 font-medium leading-relaxed">System pulls real-time synchronization from central node configuration.</p>
+                      </div>
+                   </div>
+                </section>
+              )}
 
-               <section className="space-y-6">
-                  <div className="flex items-center justify-between px-2">
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Engineering Portfolio</h3>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{projects.length} Submissions</span>
-                  </div>
-
-                  {projects.length === 0 ? (
-                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] p-16 text-center">
-                       <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">No projects submitted yet</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Real projects mapping would go here */}
-                    </div>
-                  )}
-               </section>
-            </div>
-
-            <div className="space-y-8">
-               <section className={cn(
-                  "bg-slate-900 rounded-[2.5rem] p-10 shadow-2xl transition-all duration-700 relative overflow-hidden group",
-                  activeClass ? "ring-4 ring-blue-500 ring-offset-4 ring-offset-[#FBFBFE]" : "opacity-95"
-               )}>
-                  <div className="relative z-10 space-y-10">
-                     <div className="flex justify-between items-start">
-                        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-blue-400 border border-white/10">
-                           <Play size={24} />
-                        </div>
-                        {activeClass && (
-                           <div className="px-3 py-1 bg-emerald-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse">
-                              Class is Live
-                           </div>
-                        )}
-                     </div>
-
-                     <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                           {activeClass ? "Classroom is Active" : "Next Scheduled Session"}
-                        </p>
-                        {schedule[0] ? (
-                           <>
-                             <h4 className="text-2xl font-black text-white italic tracking-tighter leading-tight">{schedule[0].topic}</h4>
-                             <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">{schedule[0].day} • {schedule[0].time}</p>
-                           </>
-                        ) : (
-                           <p className="text-xl font-black text-white italic tracking-tighter">No upcoming sessions</p>
-                        )}
-                     </div>
-
-                     <button
-                        disabled={!activeClass}
-                        className={cn(
-                           "w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95",
-                           activeClass
-                              ? "bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-900/40"
-                              : "bg-white/5 text-white/20 cursor-not-allowed border border-white/5"
-                        )}
-                     >
-                        {activeClass ? "Enter Classroom" : "Classroom opens 15 mins before session"}
-                     </button>
-                  </div>
-                  <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-               </section>
-
-               <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-6">
-                  <div className="flex items-center justify-between">
-                     <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Achievements</h4>
-                     <Award size={20} className="text-amber-500" />
-                  </div>
-
-                  {badges.length === 0 ? (
-                    <div className="py-12 bg-slate-50 rounded-[1.5rem] text-center">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No achievements recorded yet</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-4">
-                      {/* Real badges mapping */}
-                    </div>
-                  )}
-
-                  <div className="pt-4 border-t border-slate-50">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Program Certificates</p>
-                     <p className="text-sm font-bold text-slate-400 text-center">No Certificates Available Yet</p>
-                  </div>
-               </section>
-
-               <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-6">
-                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                     <Phone size={20} />
-                  </div>
-                  <div className="space-y-2">
-                     <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-tight">Student Support</h4>
-                     <p className="text-sm text-slate-500 font-medium leading-relaxed">Need technical help? Launch a chat with our engineering success team.</p>
-                  </div>
-                  <a
-                    href={process.env.NEXT_PUBLIC_WHATSAPP_LINK || "#"}
-                    className="flex items-center justify-center gap-3 w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-600 transition-all shadow-lg shadow-blue-100"
-                  >
-                    Open WhatsApp Chat
-                  </a>
-               </section>
-            </div>
-          </div>
-        )}
+              {/* Notification Center */}
+              <section className="bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-sm flex flex-col h-[380px]">
+                 <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                    <h3 className="font-black text-slate-900 text-sm uppercase tracking-tight flex items-center gap-2">
+                       <Bell size={16} className="text-blue-600" /> Notifications
+                    </h3>
+                    <span className="px-2 py-0.5 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center">2 NEW</span>
+                 </div>
+                 <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
+                    <NotificationItem
+                       title="Cohort Schedule Confirmed"
+                       time="Just now"
+                       content={`Training starts on ${SCHEDULE_DISPLAY.trainingStart}. Registration ends ${SCHEDULE_DISPLAY.registrationDeadline}. Please prepare for onboarding.`}
+                       isUnread
+                    />
+                    <NotificationItem
+                       title="Orientation Package Available"
+                       time="2 hours ago"
+                       content="Download your 2026 Welcome Kit from the Resources section."
+                       isUnread
+                    />
+                    <NotificationItem
+                       title="Assignment Deadline"
+                       time="6 hours ago"
+                       content="Your 'Responsive Landing Page' project is due tomorrow at 11:59 PM."
+                       isUnread
+                    />
+                    <NotificationItem
+                       title="Session Starts Tomorrow"
+                       time="1 day ago"
+                       content="Tomorrow's Practical Lab will start at 2:00 PM GMT instead of 1:00 PM."
+                    />
+                    <NotificationItem
+                       title="New Resource Uploaded"
+                       time="3 days ago"
+                       content="Philemon uploaded a new guide: 'Mastering Git for Solo Developers'."
+                    />
+                 </div>
+                 <div className="p-4 border-t border-slate-50 bg-slate-50/20">
+                    <Link href="/student/notifications" className="text-[10px] font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest text-center block w-full">View All Alerts</Link>
+                 </div>
+              </section>
+           </aside>
+        </div>
       </div>
     </main>
   );
 }
 
-function StatBox({ label, value, icon }: { label: string, value: any, icon: any }) {
+function InfoItem({ label, value, icon }: any) {
   return (
-    <div className="bg-white border border-slate-200 p-6 rounded-[2rem] shadow-sm hover:shadow-md transition-shadow group">
-       <div className="flex justify-between items-start mb-4">
-          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center transition-colors group-hover:bg-slate-100">
-             {icon}
+    <div className="space-y-1">
+       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-center lg:justify-start gap-1.5">
+          {icon} {label}
+       </p>
+       <p className="text-xs md:text-sm font-bold text-slate-700 truncate">{value}</p>
+    </div>
+  );
+}
+
+function TimeBlock({ label, value, isLast }: any) {
+  return (
+    <div className={cn("flex flex-col items-center", !isLast && "border-r border-white/5")}>
+       <span className="text-2xl font-black tracking-tighter tabular-nums">{value.toString().padStart(2, '0')}</span>
+       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
+    </div>
+  );
+}
+
+function LearningCard({ href, title, description, icon, color }: any) {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600 hover:bg-blue-600 group-hover:text-white",
+    emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 group-hover:text-white",
+    indigo: "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 group-hover:text-white",
+    amber: "bg-amber-50 text-amber-600 hover:bg-amber-600 group-hover:text-white"
+  };
+
+  return (
+    <Link href={href} className="bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 hover:shadow-xl hover:shadow-slate-100 hover:-translate-y-1 transition-all duration-300 group flex flex-col gap-6">
+       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300", colors[color as keyof typeof colors])}>
+          {icon}
+       </div>
+       <div className="space-y-2">
+          <h4 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{title}</h4>
+          <p className="text-slate-500 text-xs font-medium leading-relaxed">{description}</p>
+       </div>
+       <div className="pt-2 flex justify-end">
+          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+             <ChevronRight size={16} />
           </div>
        </div>
-       <div>
-          <p className="text-2xl font-black text-slate-900">{value}</p>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{label}</p>
+    </Link>
+  );
+}
+
+function NotificationItem({ title, time, content, isUnread = false }: any) {
+  return (
+    <div className={cn("p-4 hover:bg-slate-50/80 transition-all cursor-pointer group relative", isUnread && "bg-blue-50/30")}>
+       {isUnread && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />}
+       <div className="flex justify-between items-start mb-1">
+          <h4 className={cn("text-[11px] font-black uppercase tracking-tight", isUnread ? "text-slate-900" : "text-slate-600")}>{title}</h4>
+          <span className="text-[9px] font-bold text-slate-400">{time}</span>
        </div>
+       <p className="text-[11px] text-slate-500 font-medium leading-relaxed line-clamp-2 mb-2">{content}</p>
+       <button className="text-[9px] font-black text-blue-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Mark as read</button>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 md:pt-8 space-y-4 md:space-y-6">
+       <Skeleton className="h-48 md:h-56 rounded-[1.5rem] md:rounded-[2rem]" />
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
+             <Skeleton className="h-40 md:h-48 rounded-[1.5rem] md:rounded-[2rem]" />
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Skeleton className="h-32 md:h-40 rounded-[1.5rem] md:rounded-[2rem]" />
+                <Skeleton className="h-32 md:h-40 rounded-[1.5rem] md:rounded-[2rem]" />
+                <Skeleton className="h-32 md:h-40 rounded-[1.5rem] md:rounded-[2rem]" />
+                <Skeleton className="h-32 md:h-40 rounded-[1.5rem] md:rounded-[2rem]" />
+                <Skeleton className="h-32 md:h-40 rounded-[1.5rem] md:rounded-[2rem]" />
+             </div>
+          </div>
+          <div className="space-y-4 md:space-y-6">
+             <Skeleton className="h-48 md:h-56 rounded-[1.5rem] md:rounded-[2rem]" />
+             <Skeleton className="h-[380px] rounded-[1.5rem] md:rounded-[2rem]" />
+          </div>
+       </div>
+    </div>
+  );
+}
+
+function ErrorState({ onRetry }: any) {
+  return (
+    <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center space-y-6">
+       <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center border border-rose-100">
+          <Bell size={40} className="animate-bounce" />
+       </div>
+       <div className="space-y-2">
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Sync Failure</h2>
+          <p className="text-slate-500 text-sm font-medium max-w-sm">We couldn't connect to your engineering profile. Please check your connection and try again.</p>
+       </div>
+       <button onClick={onRetry} className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">Retry Synchronization</button>
     </div>
   );
 }

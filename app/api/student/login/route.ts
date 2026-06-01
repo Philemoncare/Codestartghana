@@ -88,7 +88,11 @@ export async function POST(req: Request) {
     return response;
   } catch (error: any) {
     console.error('STUDENT LOGIN ERROR:', error);
-    return NextResponse.json({ error: 'Internal system error', details: error.message }, { status: 500 });
+    let message = 'Internal system error';
+    if (error.code === 'ECONNRESET' || error.message?.includes('connect') || error.message?.includes('connection') || error.message?.includes('timeout')) {
+      message = 'Database connection failure. Please check if the database is active or if your IP is allowed.';
+    }
+    return NextResponse.json({ error: message, details: error.message }, { status: 500 });
   }
 }
 

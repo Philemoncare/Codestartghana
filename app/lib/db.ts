@@ -16,7 +16,7 @@ const poolConfig: PoolConfig = {
   // Optimize for serverless cold starts and connection limits
   max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 30000,
 };
 
 // Global pool instance to prevent multiple pools in development/serverless
@@ -42,8 +42,18 @@ export const query = async (text: string, params?: any[]) => {
       console.log('Executed query', { text, duration, rows: res.rowCount });
     }
     return res;
-  } catch (error) {
-    console.error('Database Query Error:', { text, error });
+  } catch (error: any) {
+    console.error('DATABASE_QUERY_ERROR:', {
+      text,
+      error: error.message,
+      code: error.code,
+      stack: error.stack?.substring(0, 200)
+    });
+
+    if (error.message?.includes('timeout') || error.message?.includes('ECONNRESET')) {
+       throw new Error('Database connection timed out. The Neon compute instance might be suspended or your IP is not allowed.');
+    }
+
     throw error;
   }
 };

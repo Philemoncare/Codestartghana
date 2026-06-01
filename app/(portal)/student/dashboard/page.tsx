@@ -117,6 +117,15 @@ export default function StudentDashboardPage() {
 
   const firstName = student?.fullName ? student.fullName.split(' ')[0] : 'Student';
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout');
+      router.push('/login');
+    } catch (e) {
+      router.push('/login');
+    }
+  };
+
   // 3. Handle Loading State
   if (loading) {
     return (

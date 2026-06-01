@@ -35,7 +35,11 @@ export async function POST(req: Request) {
     // 2. Mark as verified
     await query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [verification.id]);
 
-    // ... (rest of the logic)
+    // 3. Generate Session Token
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 24 * 1000); // 1 day
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
 
     await query(
       `INSERT INTO admin_sessions (admin_id, session_token, expires_at, ip_address, user_agent)

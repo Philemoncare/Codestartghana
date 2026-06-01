@@ -119,7 +119,7 @@ export default function StudentDashboardPage() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout');
+      await studentService.logout();
       router.push('/login');
     } catch (e) {
       router.push('/login');

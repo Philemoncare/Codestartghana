@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { verifyAdmin } from '@/lib/auth';
 import { createAlert } from '@/lib/alerts';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // 1. Check if admin is authorized

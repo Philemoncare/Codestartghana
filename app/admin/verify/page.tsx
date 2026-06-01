@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { notify } from "@/lib/notify";
-import { ShieldCheck, Loader2, ArrowRight, RefreshCw, Mail } from "lucide-react";
+import { ShieldCheck, Loader2, ArrowRight, RefreshCw, Mail, LogOut } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
 export default function AdminVerifyPage() {
@@ -46,7 +46,7 @@ export default function AdminVerifyPage() {
     }
   };
 
-  const handleVerify = async (e?: React.FormEvent) => {
+  const handleVerify = useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault();
     const fullCode = code.join("");
     if (fullCode.length !== 6) {
@@ -69,7 +69,7 @@ export default function AdminVerifyPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [code, router]);
 
   const handleResend = async () => {
     if (resending) return;
@@ -93,12 +93,21 @@ export default function AdminVerifyPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await apiFetch('/api/logout', { method: 'POST' });
+      router.push("/admin/login");
+    } catch (e) {
+      router.push("/admin/login");
+    }
+  };
+
   // Auto-submit when all boxes are filled
   useEffect(() => {
-    if (code.every(digit => digit !== "") && code.length === 6) {
+    if (code.every(digit => digit !== "")) {
       handleVerify();
     }
-  }, [code]);
+  }, [code, handleVerify]);
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-[#0B0F1A] relative overflow-hidden">
@@ -120,7 +129,7 @@ export default function AdminVerifyPage() {
         </div>
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 lg:p-10 rounded-[2.5rem] shadow-2xl">
-          <form onSubmit={handleVerify} className="space-y-8">
+          <form onSubmit={(e) => handleVerify(e)} className="space-y-8">
             <div className="flex justify-between gap-2 md:gap-4">
               {code.map((digit, index) => (
                 <input
@@ -165,8 +174,14 @@ export default function AdminVerifyPage() {
           </form>
         </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">CodeStart Administrative System &copy; 2026</p>
+        <div className="mt-10 text-center space-y-6">
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
+          >
+            <LogOut size={14} /> Sign out & Return to Login
+          </button>
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] block">CodeStart Administrative System &copy; 2026</p>
         </div>
       </div>
     </main>

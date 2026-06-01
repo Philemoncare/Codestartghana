@@ -57,7 +57,7 @@ export const Hero = () => {
         }} />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 w-full pt-20 pb-10 flex flex-col items-center text-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 w-full pt-32 pb-10 flex flex-col items-center text-center">
         <div className="space-y-10">
 
           {/* Single-Line Powerful Heading */}

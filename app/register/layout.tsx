@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import Image from "next/image";
+import { AnnouncementBanner } from "@/components/ui/AnnouncementBanner";
 
 export default function RegisterLayout({
   children,
@@ -9,39 +10,41 @@ export default function RegisterLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Simple Registration Header */}
-      <header className="bg-white border-b border-slate-200 py-4">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-10 h-10 transition-transform group-hover:scale-105 shrink-0">
-              <Image
-                src="/images/faicom.png"
-                alt="CodeStart Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-            <span className="font-black text-xl tracking-tighter text-slate-900 uppercase">CodeStart</span>
-          </Link>
+      <div className="fixed top-0 left-0 right-0 z-[1000]">
+        <AnnouncementBanner />
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 py-4 shadow-sm">
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="relative w-9 h-9 md:w-10 md:h-10 transition-transform group-hover:scale-105 shrink-0">
+                <Image
+                  src="/images/faicom.png"
+                  alt="CodeStart Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <span className="font-black text-xl tracking-tighter text-slate-900 uppercase">CodeStart</span>
+            </Link>
 
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-sm font-bold transition-colors"
-          >
-            <ChevronLeft size={16} />
-            Back to Home
-          </Link>
-        </div>
-      </header>
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-900 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+            >
+              <ChevronLeft size={14} />
+              Back
+            </Link>
+          </div>
+        </header>
+      </div>
 
-      <main className="flex-1">
+      <main className="flex-1 mt-32 md:mt-40">
         {children}
       </main>
 
       {/* Simple Footer */}
-      <footer className="py-8 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest">
-        &copy; 2026 CodeStart. All rights reserved.
+      <footer className="py-12 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest border-t border-slate-200 bg-white mt-20">
+        &copy; 2026 CodeStart Ghana. All rights reserved.
       </footer>
     </div>
   );

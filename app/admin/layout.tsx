@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   Settings,
-  Mail
+  Mail,
+  Bell
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -105,6 +106,7 @@ export default function AdminLayout({
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/registrations", icon: Users, label: "Registrations" },
     { href: "/admin/payments", icon: CreditCard, label: "Payments" },
+    { href: "/admin/notifications", icon: Bell, label: "Notifications" },
     { href: "/admin/timetable", icon: Calendar, label: "Timetable" },
     { href: "/admin/message-logs", icon: Mail, label: "Message Logs" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },

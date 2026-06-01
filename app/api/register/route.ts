@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to create registration record in database.' }, { status: 500 });
     }
 
-    await createAlert('warning', `New student registration: ${fullName.trim()} (${normalizedEmail})`, 'student');
+    await createAlert('warning', `New student registration: ${fullName.trim()} (${normalizedEmail})`, 'student', 'New Registration', 'registration');
 
     // 3.5 Trigger Communications (Non-blocking)
     const studentData = res.rows[0];

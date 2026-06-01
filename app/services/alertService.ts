@@ -1,31 +1,62 @@
 import { apiFetch } from "@/lib/api";
 
+export type AlertType = 'critical' | 'warning' | 'info' | 'success';
+export type AlertSource = 'system' | 'admin' | 'student';
+export type AlertCategory = 'system' | 'registration' | 'payment' | 'student' | 'security' | 'delivery';
+
 export interface Alert {
   id: number;
-  type: 'critical' | 'warning' | 'info';
+  type: AlertType;
+  title: string;
   message: string;
-  source: 'system' | 'admin' | 'student';
+  source: AlertSource;
+  category: AlertCategory;
   is_read: boolean;
+  is_archived: boolean;
   created_at: string;
 }
 
+export interface AlertFilters {
+  type?: string;
+  category?: string;
+  status?: 'read' | 'unread' | 'archived' | 'all';
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AlertsResponse {
+  alerts: Alert[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export const alertService = {
-  async getAlerts(filters: { type?: string; status?: string } = {}) {
-    const params = new URLSearchParams(filters as any);
+  async getAlerts(filters: AlertFilters = {}): Promise<AlertsResponse> {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value.toString());
+      }
+    });
     return apiFetch(`/api/admin/alerts?${params.toString()}`);
   },
 
-  async markAsRead(id: number) {
+  async updateAlert(id: number, data: Partial<Alert>) {
     return apiFetch(`/api/admin/alerts/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ is_read: true }),
+      body: JSON.stringify(data),
     });
   },
 
-  async markAllRead() {
+  async performAction(action: 'mark_read' | 'mark_unread' | 'archive' | 'restore' | 'mark_all_read', ids?: number[]) {
     return apiFetch('/api/admin/alerts', {
       method: 'PATCH',
-      body: JSON.stringify({ action: 'mark_all_read' }),
+      body: JSON.stringify({ action, ids }),
     });
   },
 
@@ -35,10 +66,17 @@ export const alertService = {
     });
   },
 
-  async clearAll() {
+  async deleteMultiple(ids: number[]) {
     return apiFetch('/api/admin/alerts', {
       method: 'DELETE',
-      body: JSON.stringify({ action: 'clear_all' }),
+      body: JSON.stringify({ action: 'delete_selected', ids }),
+    });
+  },
+
+  async clearAll(type: 'all' | 'archived' = 'all') {
+    return apiFetch('/api/admin/alerts', {
+      method: 'DELETE',
+      body: JSON.stringify({ action: type === 'all' ? 'clear_all' : 'clear_archived' }),
     });
   }
 };

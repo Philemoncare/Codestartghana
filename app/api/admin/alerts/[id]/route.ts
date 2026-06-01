@@ -8,9 +8,27 @@ export async function PATCH(
 ) {
   try {
     await verifyAdmin();
-    const { is_read } = await req.json();
+    const data = await req.json();
 
-    await query('UPDATE alerts SET is_read = $1 WHERE id = $2', [is_read, params.id]);
+    const allowedUpdates = ['is_read', 'is_archived'];
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    allowedUpdates.forEach((field) => {
+      if (data[field] !== undefined) {
+        values.push(data[field]);
+        updates.push(`${field} = $${values.length}`);
+      }
+    });
+
+    if (updates.length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
+    values.push(params.id);
+    const sql = `UPDATE alerts SET ${updates.join(', ')} WHERE id = $${values.length}`;
+
+    await query(sql, values);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Update Alert Error:', error);

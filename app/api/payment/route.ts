@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     // 5. Update Registration status to 'awaiting_verification'
     await query('UPDATE registrations SET status = $1 WHERE id = $2', ['awaiting_verification', regId]);
 
-    await createAlert('warning', `Payment submitted by ${studentName.trim()} (Trans ID: ${transactionId.trim().toUpperCase()})`, 'student');
+    await createAlert('warning', `Payment submitted by ${studentName.trim()} (Trans ID: ${transactionId.trim().toUpperCase()})`, 'student', 'New Payment Submitted', 'payment');
 
     // 6. Return Success JSON
     return NextResponse.json(res.rows[0]);

@@ -203,16 +203,33 @@ export async function GET() {
       )
     `);
 
-    // 16. NEW: System Alerts
+    // 16. ENHANCED: System Alerts & Notifications Center
     await query(`
       CREATE TABLE IF NOT EXISTS alerts (
         id SERIAL PRIMARY KEY,
-        type VARCHAR(20) NOT NULL CHECK (type IN ('critical', 'warning', 'info')),
+        type VARCHAR(20) NOT NULL DEFAULT 'info',
+        title VARCHAR(255),
         message TEXT NOT NULL,
-        source VARCHAR(50) NOT NULL,
+        category VARCHAR(50) DEFAULT 'system',
+        source VARCHAR(50) DEFAULT 'system',
         is_read BOOLEAN DEFAULT FALSE,
+        is_archived BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Add missing columns to alerts if it already existed
+    await query(`
+      ALTER TABLE alerts
+      ADD COLUMN IF NOT EXISTS title VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'system',
+      ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE
+    `);
+
+    // Update existing check constraint for type if needed (Postgres doesn't easily allow updating CHECK, so we might drop and recreate)
+    await query(`
+      ALTER TABLE alerts DROP CONSTRAINT IF EXISTS alerts_type_check;
+      ALTER TABLE alerts ADD CONSTRAINT alerts_type_check CHECK (type IN ('critical', 'warning', 'info', 'success'));
     `);
 
     // 17. NEW: SMS Logs (Termii tracking)
@@ -241,7 +258,7 @@ export async function GET() {
 
     console.log('[SETUP] Migration successful.');
 
-    await createAlert('info', 'System routine action: Database migration and setup run successfully.', 'system');
+    await createAlert('info', 'System routine action: Database migration and setup run successfully.', 'system', 'Database Migration', 'system');
 
     return NextResponse.json({
       success: true,

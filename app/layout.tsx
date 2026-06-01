@@ -4,6 +4,7 @@ import "./styles/globals.css";
 import { Toaster } from "sonner";
 import { ScrollManagement } from "@/components/ui/ScrollManagement";
 import { CookieConsent } from "@/components/ui/CookieConsent";
+import { Footer } from "@/components/ui/Footer";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { Suspense } from "react";
 import { Analytics } from "@/components/ui/Analytics";
@@ -39,6 +40,7 @@ export default function RootLayout({
         <main>
           {children}
         </main>
+        <Footer />
         <BackToTop />
         <CookieConsent />
         <Toaster

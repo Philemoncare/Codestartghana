@@ -47,8 +47,15 @@ export default function PrivacyPage() {
             <p>We do not sell, rent, or trade your personal information to third parties.</p>
             <p>Information may only be shared when required by law or necessary for providing our services.</p>
 
-            <h2 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-2">5. Cookies and Analytics</h2>
-            <p>Our website may use cookies and analytics tools to improve user experience and understand website usage.</p>
+            <h2 id="cookies" className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-2">5. Cookies and Analytics</h2>
+            <p>Our website uses cookies and similar technologies to enhance your experience. Cookies are small data files stored on your device.</p>
+            <p>We use them to:</p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>Keep you logged into your student profile</li>
+              <li>Understand how you interact with our curriculum and platform</li>
+              <li>Save your preferences (like dismissible notifications)</li>
+            </ul>
+            <p>You can control or disable cookies through your browser settings, though some platform features may not function correctly without them.</p>
 
             <h2 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-2">6. Your Rights</h2>
             <p>You may request access to, correction of, or deletion of your personal information by contacting us.</p>

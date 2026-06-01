@@ -27,34 +27,39 @@ export const Footer = () => {
 
           {/* Section 2: Quick Links */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Navigation</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Platform</h4>
             <div className="flex flex-col gap-2">
               <FooterLink href="/">Home</FooterLink>
               <FooterLink href="/#curriculum">Curriculum</FooterLink>
-              <FooterLink href="/register">Enrollment</FooterLink>
-              <FooterLink href="/login">Student Portal</FooterLink>
+              <FooterLink href="/register">Join Cohort</FooterLink>
+              <FooterLink href="/login">Student Login</FooterLink>
             </div>
           </div>
 
-          {/* Section 3: Contact (Minimal) */}
+          {/* Section 3: Legal */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Direct Contact</h4>
-            <div className="flex flex-col gap-3">
-              <a href="mailto:favmoms440@gmail.com" className="text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2">
-                <Mail size={14} className="text-blue-600" /> favmoms440@gmail.com
-              </a>
-              <a href="https://www.linkedin.com/in/philemon-melabah-ba0148317" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2">
-                <Linkedin size={14} className="text-blue-600" /> LinkedIn Profile
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Legal & Compliance</h4>
+            <div className="flex flex-col gap-2">
+              <FooterLink href="/terms">Terms & Conditions</FooterLink>
+              <FooterLink href="/privacy">Privacy Policy</FooterLink>
+              <FooterLink href="/privacy#cookies">Cookie Policy</FooterLink>
+              <a href="mailto:favmoms440@gmail.com" className="text-[11px] font-bold text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors">
+                Support
               </a>
             </div>
           </div>
 
-          {/* Section 4: Social Icons */}
+          {/* Section 4: Social & Contact */}
           <div className="space-y-4">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Connect</h4>
-            <div className="flex gap-3">
-              <SocialIcon href="https://github.com/Philemoncare" icon={<Github size={18} />} />
-              <SocialIcon href="https://www.linkedin.com/in/philemon-melabah-ba0148317" icon={<Linkedin size={18} />} />
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-3">
+                <SocialIcon href="https://github.com/Philemoncare" icon={<Github size={18} />} />
+                <SocialIcon href="https://www.linkedin.com/in/philemon-melabah-ba0148317" icon={<Linkedin size={18} />} />
+              </div>
+              <p className="text-[10px] font-medium text-slate-400 leading-relaxed">
+                Contact: <span className="text-slate-600 font-bold">favmoms440@gmail.com</span>
+              </p>
             </div>
           </div>
         </div>
